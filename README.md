@@ -1,9 +1,8 @@
 # dot-files
 
-Added this to my .zshrc:
+Ran this to put into my .zshrc:
 ```
-# Claude Sync
-alias sync='python ~/Repos/dot-files/sync.py'
+echo "# Claude Sync\nalias sync='python ~/Repos/dot-files/sync.py'\n" >> ~/.zshrc
 ```
 
 
