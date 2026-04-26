@@ -1,6 +1,6 @@
 ---
 name: scope-initiative
-description: Write or update a single per-feature roadmap initiative page at <repo>/docs/roadmap/<phase>-<n>-<slug>.md. The PM "ticket-creator" workhorse. Forcing-question gate before writing, structured page format with TODOs alongside. Triggers when the user asks to "scope this feature", "write up this initiative", "add this to the roadmap", "create a roadmap page", or "draft a ticket for X".
+description: Write or update a single per-feature roadmap initiative page at <repo>/docs/roadmap/<phase>-<n>-<slug>.md. The PM "ticket-creator" workhorse. Decomposition pre-check, propose-2-3-approaches when ambiguous, forcing-question gate, structured page format with TODOs alongside. Triggers when the user asks to "scope this feature", "write up this initiative", "add this to the roadmap", "create a roadmap page", "brainstorm this feature", or "draft a ticket for X".
 ---
 
 # scope-initiative
@@ -18,6 +18,44 @@ Produces one initiative page. The page is the durable artifact the user (and rev
 - `<slug>` — kebab-case feature name. `schema-refactor`, `fts5`, `kobo-sync`.
 
 Examples: `0-1-schema-refactor.md`, `1-3-library-views.md`, `4-1-kobo-sync.md`.
+
+## Step 0 — scope check (before anything else)
+
+**Every initiative goes through this skill, even "simple" ones.** "This is too small to need a page" is the rationalization where unexamined assumptions cause wasted work. The page can be short — a few sentences per section is fine — but it must exist and the user must approve it before implementation starts.
+
+### Subsystem decomposition
+
+If the user's request describes multiple independent subsystems, **stop and decompose first**. Don't write one initiative page that spans them.
+
+A request is multi-subsystem when:
+- It names 2+ user-facing features that don't share a primary code path (e.g. "search and audiobook player and Kobo sync").
+- The success criteria for each piece are testable in isolation.
+- Different reviewers would care about different pieces.
+
+When decomposing, surface back to the user:
+- The candidate sub-initiatives, named.
+- Their dependency order (what must ship before what).
+- Which one to start with.
+
+Then run this skill once per sub-initiative — each gets its own `<phase>-<n>-<slug>.md`.
+
+### Implementation path obvious?
+
+If the implementation path is obvious (one well-known pattern, no real alternatives), proceed straight to Step 1.
+
+If multiple defensible approaches exist, do **Step 0b** before the forcing-question gate:
+
+#### Step 0b — propose 2–3 approaches
+
+Present each candidate approach with:
+- One-line description.
+- Trade-offs (what it's good at, where it hurts).
+- Effort estimate (S / M / L / XL).
+- Your recommendation, with reasoning.
+
+Get the user to pick one. The chosen approach informs §Technical considerations on the page. Do **not** silently pick — that's where roadmap drift starts.
+
+If the user can't decide between approaches, that's the conversation to have *before* the page exists.
 
 ## Step 1 — answer the forcing-question gate
 
@@ -118,6 +156,9 @@ The user's [Omnibus repo](../../../Repos/omnibus/docs/roadmap/) is the reference
 
 ## Hard rules
 
+- **Never** skip Step 0. "This is too small to need a page" is the rationalization that costs the most rework.
+- **Never** write one page that spans multiple subsystems. Decompose first.
+- **Never** silently pick between defensible approaches. Surface the choice (Step 0b) and let the user decide.
 - **Never** write the page before answering all six forcing questions.
 - **Never** invent dependencies — every link in §Dependencies points to a real initiative file.
 - **Never** combine §Open questions resolved/unresolved into one bullet list. Keep them separated.
