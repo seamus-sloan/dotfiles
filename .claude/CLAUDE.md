@@ -1,9 +1,4 @@
-- Use branch naming patterns like `u/sloan/<title>` or `<repo_name>-<issue_number>/<branch_name>`
-  - u/sloan/fix-failing-tests
-  - omnibus-6/add-more-things
-  - home-library-200/add-more-books
-- Use conventional commits in all of my repositories by prefixing commits with `feat`, `fix`, or `chore`
-- Always use `jj` for version control
+- Always use jj for all version control -- never use git.
   - Use `jj git fetch` to get the latest changes. May need to fetch from origin at some points.
   - Check `jj st` before making changes
   - Create a new branch via `jj bookmark create <branch_name>`
@@ -17,3 +12,11 @@
     - `jj workspace list` — list all workspaces
     - `jj workspace forget <name>` — untrack after deleting the directory (`rm -rf <path> && jj workspace forget <name>`)
     - Inside any workspace, `jj log` shows other workspaces as `<name>@` markers
+- Use branch naming patterns that match a ticket name. For example:
+  - ADA-123/updates-some-setting
+  - AAA-6721/refactor-launch
+  - AE-90/more-tests
+- Prompt the user for a ticket when creating a branch.
+  - If the user says there is no ticket, fallback to u/sloan/<feature> for the branch name
+- Use conventional commits in all repositories by prefixing commits with `feat`, `fix`, or `chore`
+
