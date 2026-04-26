@@ -4,6 +4,8 @@
 Usage:
     python sync.py install [--dry-run]   # repo/.claude  -> ~/.claude
     python sync.py save    [--dry-run]   # ~/.claude     -> repo/.claude
+    python sync.py fetch                 # jj git fetch + dry-run install
+    python sync.py commit                # save + jj describe/move/push
 
 Top-level children of `repo/.claude/` define what is tracked. Files sync by
 exact path; directories mirror their entire subtree (new files discovered,
@@ -15,10 +17,12 @@ from __future__ import annotations
 import argparse
 import filecmp
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 REPO_CLAUDE = Path(__file__).resolve().parent / ".claude"
+REPO_ROOT = REPO_CLAUDE.parent
 HOME_CLAUDE = Path.home() / ".claude"
 
 
@@ -122,15 +126,52 @@ def run(direction: str, dry_run: bool) -> None:
     print(f"\n{stats.copied} copied, {stats.deleted} deleted, {stats.unchanged} unchanged")
 
 
+def run_jj(args: list[str]) -> None:
+    subprocess.run(["jj", *args], cwd=REPO_ROOT, check=True)
+
+
+def fetch() -> None:
+    run_jj(["git", "fetch"])
+    run_jj(["new", "main"])
+    print()
+    run("install", dry_run=True)
+
+
+def commit() -> None:
+    run("save", dry_run=False)
+    print()
+    run_jj(["st"])
+
+    message = ""
+    while not message:
+        message = input("Commit message: ").strip()
+
+    confirm = input(f'Commit "{message}", move main, and push? [y/N] ').strip().lower()
+    if confirm != "y":
+        print("aborted")
+        return
+
+    run_jj(["describe", "-m", message])
+    run_jj(["bookmark", "move", "main", "--to", "@"])
+    run_jj(["git", "push"])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     subs = parser.add_subparsers(dest="command", required=True)
     for cmd, help_text in [("install", "repo/.claude -> ~/.claude"), ("save", "~/.claude -> repo/.claude")]:
         sp = subs.add_parser(cmd, help=help_text)
         sp.add_argument("--dry-run", action="store_true", help="preview without writing")
+    subs.add_parser("fetch", help="jj git fetch + dry-run install")
+    subs.add_parser("commit", help="save + jj describe/move/push")
 
     args = parser.parse_args()
-    run(args.command, args.dry_run)
+    if args.command == "fetch":
+        fetch()
+    elif args.command == "commit":
+        commit()
+    else:
+        run(args.command, args.dry_run)
 
 
 if __name__ == "__main__":
