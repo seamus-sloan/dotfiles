@@ -1,6 +1,8 @@
 - Always use jj for all version control -- never use git.
+  - Reference the `jj-basics` skill for all `jj` interactions
+  - You should always check what's currently committed via `jj st`
+    - Always run `jj new` before starting new edits — even when the working copy is clean. A clean working copy on a pushed bookmark still needs `jj new <bookmark>` to stack a new commit on top rather than amend the already-pushed one (which causes a force push).
   - Use `jj git fetch` to get the latest changes. May need to fetch from origin at some points.
-  - Check `jj st` before making changes
   - Create a new branch via `jj bookmark create <branch_name>`
   - Perform `jj new <bookmark_name>` before making a new change
   - Perform `jj describe -m "<message>" to describe the changes about to be made
