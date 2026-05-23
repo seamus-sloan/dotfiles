@@ -7,6 +7,30 @@ description: Core jj workflow — fetch, status, new change, describe, bookmark,
 
 Use [jj](https://github.com/martinvonz/jj) instead of plain git. jj sits on top of the same git storage, so remotes, pushes, and fetches all go through `jj git ...`.
 
+## Hard rule: never amend a pushed commit
+
+jj **auto-snapshots the working copy into `@` on every command**. If `@` is the same commit as a bookmark that's already pushed to origin, your next edit silently rewrites that commit — and `jj git push` force-moves the bookmark sideways, which counts as a force push.
+
+**Before any edits, run `jj new <bookmark>` to stack a new commit on top — even if the working copy is clean.** This is mandatory whenever:
+
+- You're returning to a branch with an existing PR to address review feedback.
+- A previous task pushed the bookmark and the user is asking for follow-up changes.
+- You ran `jj edit <bookmark>` to inspect the commit and now want to change something.
+- You rebased the bookmark and want to add fixes on top.
+
+The cheap discipline:
+
+```bash
+jj log -r @ -T 'bookmarks ++ " " ++ commit_id.shortest(8)'   # what is @ pointing at?
+jj new <bookmark>                                            # stack a new empty commit
+# ...edit files...
+jj describe -m "fix: ..."
+jj bookmark move <bookmark> --to @
+jj git push -b <bookmark>                                    # fast-forward push, no force
+```
+
+If `jj git push` ever announces `Move sideways bookmark <name> from <old> to <new>`, that means the bookmark commit hash changed — i.e. you amended a pushed commit. Stop and check whether you should have done `jj new` first.
+
 ## Branch naming
 
 - Personal branches: `u/<last_name>/<feat_name>` (e.g. `u/sloan/fix-failing-tests`).
@@ -37,6 +61,19 @@ After each logical commit:
 jj describe -m "chore: ..."
 jj bookmark move ADA-323/my-feature --to @
 jj new                                             # start the next change on top
+```
+
+## Continuing work on an already-pushed branch
+
+When the user asks for changes on a branch that already has a remote (e.g. PR review fixes), the very first action is `jj new <bookmark>` — *not* editing files. Skipping this and editing directly amends the pushed commit and forces the next push.
+
+```bash
+jj git fetch                                       # pull latest origin state
+jj new u/sloan/my-feature                          # stack a new empty commit on the pushed tip
+# ...edit files...
+jj describe -m "fix: address review"
+jj bookmark move u/sloan/my-feature --to @
+jj git push -b u/sloan/my-feature                  # fast-forward push
 ```
 
 ## Useful one-liners
