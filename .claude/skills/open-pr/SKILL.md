@@ -38,12 +38,18 @@ Keep titles under ~70 chars. Detail goes in the body, not the title. Conventiona
 
   ```markdown
   ## Summary
-  - 1-3 bullets describing what changed and why.
+  - 1-3 short bullets.
 
   ## Test plan
-  - [ ] How to verify the change.
+  - [ ] How to verify.
   ```
 
+- **Be terse.** The diff is already in the PR. The body explains the *shape* of the change and how to verify it — nothing the reviewer can read in the diff itself.
+  - Summary: aim for 2-4 single-line bullets, or a one-paragraph framing followed by 2-3 bullets if the cluster needs context. No multi-clause bullets that smuggle in a second thought.
+  - Test plan: a checklist of evidence (test counts, commands run, manual verification surfaces) — not a narrated list of test names or what each one covers.
+  - Drop optional template sections (`Notes`, `Screenshots`, etc.) when they'd carry nothing new. Don't pad them with restated invariants.
+  - Don't include `file.rs:123` refs that the diff already shows. Don't restate commit subjects. Don't recap the conversation.
+  - One-sentence invariants worth surfacing (write-path contracts, follow-up scope decisions) belong at the end of Summary, not in their own section.
 - Never invent items to fill space. Doc-only changes: test plan is "N/A — docs only".
 - Pass the body via a `cat <<'EOF' … EOF` heredoc so multi-line markdown survives shell quoting.
 
