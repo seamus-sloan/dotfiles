@@ -21,5 +21,13 @@
 - Prompt the user for a ticket when creating a branch.
   - If the user says there is no ticket, fallback to u/sloan/<feature> for the branch name
 - Use conventional commits in all repositories by prefixing commits with `feat`, `fix`, or `chore`
+- Break work into stacked branches when:
+  - Work exceeds 500 lines across multiple files
+  - Work has changed more than 20 files for various changes
+  - Work can be meaningfully broken down into smaller PRs for better reviewability
+- Stacked branches should be denoted so other developers can tell which one is the head of the train
+  - The branch that everything is based off of should be `-1`
+  - The next branch and the branch after that would be `-2` and `-3` respectively
+  - As branches are code complete, the branches should be pushed up and follow @../skills/open-pr/SKILL.md
 
 @RTK.md
