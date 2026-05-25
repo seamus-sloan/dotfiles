@@ -1,3 +1,11 @@
+- Name the session appropriately so that it can be found easily later.
+  - When the user gives a feature to work on, summarize it into just three small words.
+  - When the user gives a workspace to work in, abbreviate it and append it to the session name
+    - Otherwise, use "Null"
+  - Examples:
+    - "Please work on the registration page in the Xray workspace" --> "Registration Page - X"
+    - "Fix some random E2E tests using the yankee workspace" --> "E2E Fixes - Y"
+    - "Refactor the library page so that books appear as expected" --> "Library Page Refactor - Null"
 - Always use jj for all version control -- never use git.
   - Reference the `jj-basics` skill for all `jj` interactions
   - You should always check what's currently committed via `jj st`
