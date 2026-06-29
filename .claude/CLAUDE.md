@@ -9,6 +9,7 @@
 - Always use jj for all version control -- never use git.
   - Reference the `jj-basics` skill for all `jj` interactions
   - You should always check what's currently committed via `jj st`
+    - **Before ANY Edit/Write tool call, run `jj st` first.** If `@` is on an already-pushed bookmark (or any commit you don't intend to amend), run `jj new <bookmark>` *before* the first edit. jj auto-snapshots dirty working-copy state into `@` on every command, so edits made on a pushed `@` silently amend it — the next `jj git push` becomes a "Move sideways" force-push that rewrites published history. There is no recovery besides force-push or branch deletion. This includes follow-up commits on a PR branch — even when you intended to stack on top, you must `jj new` *before* editing, never after. See [[feedback_jj_auto_snapshot_amends]] for the full incident pattern.
     - Always run `jj new` before starting new edits — even when the working copy is clean. A clean working copy on a pushed bookmark still needs `jj new <bookmark>` to stack a new commit on top rather than amend the already-pushed one (which causes a force push).
   - Use `jj git fetch` to get the latest changes. May need to fetch from origin at some points.
   - Create a new branch via `jj bookmark create <branch_name>`
