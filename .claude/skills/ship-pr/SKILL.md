@@ -35,7 +35,7 @@ Invoke the **`open-pr`** skill. It picks the title, fills the body from the repo
 
 ## 2. Wait for Copilot's review
 
-Copilot is auto-added and posts its review a minute or two after open (and again after each new push). Poll for a **completed review whose commit matches the current PR head** — an older review from a previous push doesn't count.
+Copilot is auto-added and posts its review a minute or two after open. **It reviews only once per PR** — it does not re-review after later pushes, so this wait applies to the *first* review only. Poll for a completed Copilot review on the PR (any commit).
 
 ```bash
 # Current head SHA
@@ -46,7 +46,7 @@ gh api "repos/<owner>/<repo>/pulls/<pr>/reviews" --paginate \
   --jq '.[] | select(.user.login | test("[Cc]opilot")) | {state, sha: .commit_id, submitted_at}'
 ```
 
-Poll roughly every 30–60s. Consider the review "landed" once a Copilot review exists whose `commit_id` equals the current head SHA. If after ~5 minutes there's still no Copilot review (it doesn't always comment on trivial diffs), treat the review as **clean** and move on — don't block forever.
+Poll roughly every 30–60s. Consider the review "landed" once any Copilot review exists on the PR. If after ~5 minutes there's still no Copilot review (it doesn't always comment on trivial diffs), treat the review as **clean** and move on — don't block forever.
 
 Also read any inline comments it left (the review can be `COMMENTED`/`CHANGES_REQUESTED` with diff-anchored notes) — those are what step 3 acts on.
 
@@ -56,10 +56,10 @@ Invoke the **`resolve-pr-comments`** skill against the PR. It collects all three
 
 Then branch on its outcome:
 
-- **All comments were fix-now (zero deferrals, zero push-backs):** the fixes pushed new commits. **Loop back to step 2** — Copilot re-reviews the new head, and you resolve any fresh comments. Repeat until a review round produces no new fix-now items.
+- **All comments were fix-now (zero deferrals, zero push-backs):** the fixes pushed new commits. Proceed straight to step 4 — **Copilot reviews only once per PR and will not re-review the fix commits**, so there is no re-review loop to wait on.
 - **Any deferrals or push-backs exist:** these are the user's calls by definition (see `resolve-pr-comments` §3b/§3c). **Stop the pipeline and hand back** the skill's summary. Do **not** merge — even in auto-merge mode — because unresolved reviewer feedback is outstanding. The user decides; they may then tell you to merge anyway, defer them to a follow-up, or send a reply.
 
-Convergence guard: if the fix→re-review loop runs more than ~3 rounds without settling, stop and surface what's still churning rather than looping indefinitely.
+Convergence guard: comment resolution is a single round (Copilot won't re-review), but if CI-driven fixes keep churning past ~3 rounds, stop and surface what's still failing rather than looping indefinitely.
 
 ## 4. Wait for CI to go green
 
@@ -71,7 +71,7 @@ gh pr checks <pr> --watch --fail-fast
 
 - `--watch` blocks until every required check finishes; exit code `0` means all passed.
 - **A `SKIPPED` Playwright check is not a pass** if the diff touches UI — it means the `run_ui_tests` label is missing (step 1). Add the label, which re-triggers the workflow, then re-watch.
-- **On a red check:** read the failing job's log (`gh run view <run-id> --log-failed`). If it's a genuine failure in this branch's code (fmt, clippy, a broken test), that's real work — **fix it** on a fresh stacked commit exactly like a fix-now review comment (`jj new <bookmark>` first — never amend the pushed tip), push, and loop back to step 2 so the new commit gets reviewed and re-checked. If it's plainly a flake or infra blip, re-run (`gh run rerun <run-id> --failed`) once; if it fails again the same way, stop and surface it — don't merge over red.
+- **On a red check:** read the failing job's log (`gh run view <run-id> --log-failed`). If it's a genuine failure in this branch's code (fmt, clippy, a broken test), that's real work — **fix it** on a fresh stacked commit exactly like a fix-now review comment (`jj new <bookmark>` first — never amend the pushed tip), push, and re-watch the checks (no re-review wait — Copilot only reviews once). If it's plainly a flake or infra blip, re-run (`gh run rerun <run-id> --failed`) once; if it fails again the same way, stop and surface it — don't merge over red.
 
 ## 5. Merge
 
