@@ -77,6 +77,14 @@ Before opening, scan the repo's `CLAUDE.md` / `.claude/` / `CONTRIBUTING.md` for
 
 When working from a jj workspace or git worktree, `cd` into the main repo first — `gh` resolves the upstream repo from the working directory, and a workspace path may not have one wired up the same way.
 
+**Non-colocated jj repos have no top-level `.git`** (the git store lives under `.jj/repo/store/git`), so a bare `gh pr create` fails with `fatal: not a git repository` and can't infer the branch either. Pass repo, base, and head explicitly:
+
+```bash
+gh pr create --repo <owner>/<repo> --base main --head <bookmark> --assignee @me --label <type> ...
+```
+
+Get the current bookmark from `jj log -r @ --no-graph -T bookmarks` and the repo slug from `jj git remote list`.
+
 ## End-to-end example
 
 ```bash
