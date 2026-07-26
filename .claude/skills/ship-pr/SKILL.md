@@ -32,6 +32,7 @@ Invoke the **`open-pr`** skill. It picks the title, fills the body from the repo
   gh pr edit <pr> --add-label run_ui_tests
   ```
 - **Never request Copilot as a reviewer.** It's auto-attached by repo settings on this repo. No `--reviewer Copilot`, no `requested_reviewers` POST.
+- **Issue-closing keyword.** `open-pr` is responsible for putting a `Closes #<n>` (or `Fixes #<n>`) line in the body when the PR fully resolves a tracked issue — see its "Closing keyword" section. When ship-pr was invoked *for an issue* ("ship #1186", a pasted issue URL), confirm that line made it into the body before moving on; add it with `gh pr edit <pr> --body` if it's missing. Use `Part of #<n>` (no keyword) when the PR is only one sub-task of a larger issue, so the merge doesn't wrongly close the parent. This is what makes step 5's merge auto-close the issue.
 
 ## 2. Wait for Copilot's review
 
@@ -89,6 +90,20 @@ After merging, sync local state so the next change starts from the merged tip:
 jj git fetch    # jj repos — then `jj new <trunk-bookmark>` for the next change
 git fetch && git checkout main && git pull   # git repos
 ```
+
+**Confirm the issue closed.** If this PR was meant to resolve a tracked issue, verify the merge auto-closed it (the `Closes #<n>` line from step 1 does this):
+
+```bash
+gh issue view <n> --json state --jq .state   # want: CLOSED
+```
+
+If it's still `OPEN` and the PR *fully* resolved it (the body was missing the keyword, or a bare `#<n>` was used), close it manually with a comment pointing at the merged PR:
+
+```bash
+gh issue close <n> --comment "Shipped in #<pr> (merged to \`main\`). <one line on what landed>."
+```
+
+Leave it open only when the PR was a partial (`Part of #<n>`) — say so in the report.
 
 ## 6. Final report
 
