@@ -53,6 +53,16 @@ Keep titles under ~70 chars. Detail goes in the body, not the title. Conventiona
 - Never invent items to fill space. Doc-only changes: test plan is "N/A — docs only".
 - Pass the body via a `cat <<'EOF' … EOF` heredoc so multi-line markdown survives shell quoting.
 
+### Closing keyword — always link the issue the PR resolves
+
+If this PR fully resolves a tracked issue, the body **must** contain a GitHub closing keyword so the merge auto-closes it: `Closes #<n>` (or `Fixes #<n>` for a bug). Put it on its own line at the end of the Summary section.
+
+- **Fully resolves** the issue → `Closes #<n>`. This is the common case when the branch/work was scoped to one issue (e.g. a `<TICKET>/…` branch, or the user said "ship issue #N").
+- **Partially addresses** it (one sub-task of a larger issue) → reference it *without* a closing keyword: `Part of #<n>` / `Sub-task of #<n>`. A closing keyword here would wrongly close the parent.
+- **A bare `#<n>`** mention (no keyword) never closes anything — it only cross-links. Don't rely on it to close an issue.
+
+Determine the issue number from the branch name (`<TICKET>/…`, `<n>/…`, `feat/<n>-…`), the conversation ("ship issue #N", a pasted issue URL), or the commit body. When you can't tell whether the PR *fully* resolves it, prefer `Part of #<n>` and say so — under-closing is recoverable, wrongly closing a parent epic is noise. If the template has a dedicated "Closes/Fixes" or "Related issues" field, use that instead of appending to Summary.
+
 ## 4. Assignee — always the current user
 
 ```bash
