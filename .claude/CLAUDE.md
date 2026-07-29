@@ -1,3 +1,6 @@
+- NEVER say "Co-authored by Claude" in commit messages. All work was done by the user.
+- NEVER mention "Generated with Claude" in pull request descriptions. All work was done by the user.
+- All work pushed to remote should have no references to Claude.
 - Always use jj for all version control -- never use git.
   - Reference the `jj-basics` skill for all `jj` interactions
   - You should always check what's currently committed via `jj st`
