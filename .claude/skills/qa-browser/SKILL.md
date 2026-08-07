@@ -1,6 +1,6 @@
 ---
 name: qa-browser
-description: Test → Fix → Verify loop against a running web app using Claude in Chrome MCP. Smoke + golden paths + edge cases + regressions, with atomic jj commits per fix and a markdown report. Triggers when the user asks to "QA the app", "qa-browser", "smoke-test the running app", "test the staging build", "run the QA suite", or "verify the feature in the browser".
+description: Test → Fix → Verify loop against a running web app using Claude in Chrome MCP. Smoke + golden paths + edge cases + regressions, with atomic commits per fix and a markdown report. Triggers when the user asks to "QA the app", "qa-browser", "smoke-test the running app", "test the staging build", "run the QA suite", or "verify the feature in the browser".
 ---
 
 # qa-browser
@@ -43,7 +43,7 @@ If the user didn't specify, default to Standard.
 ### 3. Working tree must be clean
 
 ```bash
-jj st
+git status --short
 ```
 
 If the working tree is dirty, ask: **commit current changes**, **stash**, or **abort**. Each fix needs to be its own atomic change, so a dirty tree blocks.
@@ -67,7 +67,7 @@ If smoke fails: stop. File a critical issue, report, exit. The app isn't testabl
 
 ## Phase 2 — Golden paths
 
-Infer the user-facing happy paths from the diff (`jj diff -r 'main..@'`) and the recently-changed files. For each:
+Infer the user-facing happy paths from the diff (`git diff main...HEAD`) and the recently-changed files. For each:
 
 1. Plan the steps (what does a real user do?).
 2. Execute via `mcp__Claude_in_Chrome__computer` / `find` / `form_input`.
@@ -100,7 +100,7 @@ For each bug at or above the tier's auto-fix threshold:
 1. Investigate root cause via the [investigate](../investigate/SKILL.md) skill — Iron Law applies.
 2. Fix in source.
 3. Re-run the scenario that found it. Confirm pass.
-4. `jj describe -m "fix: <one-line>"` and `jj bookmark move <branch> --to @` per [jj-basics](../jj-basics/SKILL.md). Each fix is its own atomic change.
+4. `git add -u && git commit -m "fix: <one-line>"`. Each fix is its own atomic commit.
 5. Capture a before/after screenshot pair: `issue-<NNN>-before.png` / `issue-<NNN>-after.png`.
 
 Below the threshold (e.g. Low severity in Quick tier): record only, don't fix.
@@ -124,7 +124,7 @@ Below the threshold (e.g. Low severity in Quick tier): record only, don't fix.
 # QA report — <YYYY-MM-DD>
 
 **Target:** <URL> · **Tier:** <Quick/Standard/Exhaustive>
-**Branch:** <bookmark> · **PRs in window:** <count>
+**Branch:** <branch> · **PRs in window:** <count>
 
 ## Summary
 

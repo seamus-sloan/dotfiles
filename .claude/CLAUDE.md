@@ -1,23 +1,25 @@
 - NEVER say "Co-authored by Claude" in commit messages. All work was done by the user.
 - NEVER mention "Generated with Claude" in pull request descriptions. All work was done by the user.
 - All work pushed to remote should have no references to Claude.
-- Always use jj for all version control -- never use git.
-  - Reference the `jj-basics` skill for all `jj` interactions
-  - You should always check what's currently committed via `jj st`
-    - **Before ANY Edit/Write tool call, run `jj st` first.** If `@` is on an already-pushed bookmark (or any commit you don't intend to amend), run `jj new <bookmark>` *before* the first edit. jj auto-snapshots dirty working-copy state into `@` on every command, so edits made on a pushed `@` silently amend it — the next `jj git push` becomes a "Move sideways" force-push that rewrites published history. There is no recovery besides force-push or branch deletion. This includes follow-up commits on a PR branch — even when you intended to stack on top, you must `jj new` *before* editing, never after. See [[feedback_jj_auto_snapshot_amends]] for the full incident pattern.
-    - Always run `jj new` before starting new edits — even when the working copy is clean. A clean working copy on a pushed bookmark still needs `jj new <bookmark>` to stack a new commit on top rather than amend the already-pushed one (which causes a force push).
-  - Use `jj git fetch` to get the latest changes. May need to fetch from origin at some points.
-  - Create a new branch via `jj bookmark create <branch_name>`
-  - Perform `jj new <bookmark_name>` before making a new change
-  - Perform `jj describe -m "<message>" to describe the changes about to be made
-  - Perform `jj bookmark move <bookmark_name> --to <sha/@>` commit changes
-  - Push changes to remote via `jj git push`
-  - Refer to `jj --help` or `jj <command> --help` for more information
-  - For parallel agent work on a jj-driven repo, use **jj workspaces** instead of the Agent tool's `isolation: "worktree"` (which creates a git worktree). jj workspaces share the same `.jj/` store, so bookmarks and changes made in one are immediately visible from the main workspace — no marshalling required.
-    - `jj workspace add <path> --name <name> -r <rev>` — create (e.g. `jj workspace add ../repo-feat --name feat -r main`)
-    - `jj workspace list` — list all workspaces
-    - `jj workspace forget <name>` — untrack after deleting the directory (`rm -rf <path> && jj workspace forget <name>`)
-    - Inside any workspace, `jj log` shows other workspaces as `<name>@` markers
+- **Worktrunk trial, started 2026-08-07.** The previous jj-based rules are preserved verbatim at `~/.claude/CLAUDE.md.jj-backup` — restore that file to revert.
+- Always use git + worktrunk (`wt`) for all version control -- never use jj.
+  - The `jj-basics`, `jj-advanced`, and `jj-workspaces` skills are PAUSED for the duration of the trial. Do not invoke them, even when a request would normally trigger one ("commit this", "push it up", "make a branch"). Use the commands below instead.
+  - Many repos are still jj-colocated (they have both `.git/` and `.jj/`). Ignore `.jj/` entirely — do not run jj commands in them, and do not treat jj state as authoritative.
+  - You should always check what's currently modified via `git status`
+    - **Before ANY Edit/Write tool call, run `git status` and `git branch --show-current` first.** If you are on `main` (or any branch you don't intend to add commits to), create the branch *before* the first edit, not after.
+    - **Never rewrite published history.** No `git commit --amend`, `git rebase`, or `git push --force` on a commit that has already been pushed. Add a new commit on top instead. This includes follow-up commits on a PR branch.
+    - `git add .` and `git commit` only affect the current worktree — each worktree has its own index and HEAD. The stash, however, is shared across every worktree of a repo.
+  - Use `git fetch origin` to get the latest changes.
+  - Start any new piece of work with `wt switch --create <branch_name>` — this creates the branch and its worktree together and cds into it. Use `-b <base>` to base it on something other than the default branch.
+    - `wt switch <branch>` returns to an existing worktree; bare `wt switch` opens a picker
+    - `wt list` shows every worktree and its status
+    - `wt remove` deletes the worktree, and the branch if it has been merged
+    - Worktrees live at `~/worktrees/<repo>/<branch>`
+    - A `pre-start` hook copies gitignored secrets into new worktrees, but only in repos that have a `.worktreeinclude`. If a new worktree is missing its `.env`, add `.worktreeinclude` to that repo rather than copying files by hand.
+  - Commit with `git add .` then `git commit -m "<message>"`
+  - Push with `git push`. `push.autoSetupRemote` is enabled globally, so the first push on a new branch sets the upstream automatically — do not pass `--set-upstream`, and never pass `--force`.
+  - Refer to `wt --help`, `wt <command> --help`, or https://worktrunk.dev for more information
+  - For parallel agent work, give each agent its own worktrunk worktree via `wt switch --create <branch>` rather than the Agent tool's `isolation: "worktree"`, so the worktrees show up in `wt list` and get cleaned up by `wt remove`.
 - Use branch naming patterns that match a ticket name. For example:
   - ADA-123/updates-some-setting
   - AAA-6721/refactor-launch
@@ -32,6 +34,9 @@
 - Stacked branches should be denoted so other developers can tell which one is the head of the train
   - The branch that everything is based off of should be `-1`
   - The next branch and the branch after that would be `-2` and `-3` respectively
-  - As branches are code complete, the branches should be pushed up and follow @../skills/open-pr/SKILL.md
+  - As branches are code complete, the branches should be pushed up and follow @skills/open-pr/SKILL.md
+- PR descriptions are **ALWAYS** a bullet point list — never prose paragraphs.
+  - **Never insert your own line breaks.** Write each bullet as one continuous line and let it soft-wrap. Hard-wrapping mid-sentence to hit some column width renders as ragged text in the GitHub UI.
+  - This applies to every section of the PR body, including template sections that look like they want prose.
 
 @RTK.md

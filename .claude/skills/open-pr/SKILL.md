@@ -16,8 +16,7 @@ Only run when the user explicitly asks for a PR ("open a PR", "push it up as a P
 Resolve the current branch first:
 
 ```bash
-jj log -r @ --no-graph -T 'bookmarks'   # jj repos
-git branch --show-current               # git repos
+git branch --show-current
 ```
 
 Then pick the format:
@@ -83,22 +82,22 @@ Refactors / dep bumps: closest fit (usually `enhancement` for behavior-affecting
 
 Before opening, scan the repo's `CLAUDE.md` / `.claude/` / `CONTRIBUTING.md` for additional label gates (e.g. some repos require `run_ui_tests` when E2E directories are touched) and add them.
 
-## 6. Run `gh` from the main checkout
+## 6. Running `gh` from a worktree
 
-When working from a jj workspace or git worktree, `cd` into the main repo first — `gh` resolves the upstream repo from the working directory, and a workspace path may not have one wired up the same way.
+`gh` resolves the upstream repo from the working directory. A worktrunk worktree has a `.git` *file* pointing back at the main repo, which `gh` follows fine — so run it in place, no `cd` needed.
 
-**Non-colocated jj repos have no top-level `.git`** (the git store lives under `.jj/repo/store/git`), so a bare `gh pr create` fails with `fatal: not a git repository` and can't infer the branch either. Pass repo, base, and head explicitly:
+If `gh` still can't infer the repo or the branch, pass them explicitly rather than hopping between directories:
 
 ```bash
-gh pr create --repo <owner>/<repo> --base main --head <bookmark> --assignee @me --label <type> ...
+gh pr create --repo <owner>/<repo> --base main --head <branch> --assignee @me --label <type> ...
 ```
 
-Get the current bookmark from `jj log -r @ --no-graph -T bookmarks` and the repo slug from `jj git remote list`.
+Get the branch from `git branch --show-current` and the repo slug from `gh repo view --json nameWithOwner --jq .nameWithOwner`.
 
 ## End-to-end example
 
 ```bash
-cd /Users/me/Repos/<repo>
+# run from inside the worktree — no cd needed
 gh pr create \
   --title "[ADA-120] Add login flow" \
   --assignee @me \

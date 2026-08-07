@@ -122,11 +122,11 @@ Expected: `PASS`.
 - [ ] **Step 5: commit**
 
 ```bash
-jj describe -m "feat: add /login handler with session creation"
-jj bookmark move ADA-120/login-flow --to @
+git add .
+git commit -m "feat: add /login handler with session creation"
 ```
 
-(Per [jj-basics](../../skills/jj-basics/SKILL.md). Don't push yet — push at end of plan.)
+(Don't push yet — push at end of plan.)
 ```
 
 ## No placeholders — ever
@@ -176,10 +176,10 @@ If you can't fill a step in concretely, the plan isn't ready — go back to the 
   ```
 
 - [ ] **Push**
-  Per [jj-basics](../../skills/jj-basics/SKILL.md):
   ```bash
-  jj git push
+  git push
   ```
+  `push.autoSetupRemote` is set globally, so the first push on a new branch sets its upstream. Never `--force`.
 
 - [ ] **Open PR**
   Per [open-pr](../../skills/open-pr/SKILL.md).

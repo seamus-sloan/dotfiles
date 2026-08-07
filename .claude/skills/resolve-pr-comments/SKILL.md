@@ -65,14 +65,20 @@ When in doubt between *defer* and *push back*, ask: **"Would a reasonable senior
 
 **0. Stack a new commit before editing anything.** The PR branch is already pushed; reviewers have commented against the existing commit hashes. Amending in place rewrites those hashes and forces the next push, which is destructive and loses the comment anchors. So:
 
-- **jj repos:** `jj new <bookmark>` *first*, even if `jj st` shows a clean working copy. jj auto-snapshots edits into `@`, so if `@` is the bookmark commit your edits silently amend the pushed commit — and `jj git push` then announces `Move sideways bookmark <name> from <old> to <new>`, which is a force push.
-- **git repos:** ensure HEAD is on the PR branch and ahead of `origin/<branch>` (or equal). Make commits on top normally; never `git commit --amend` or `git rebase` past the published tip without the user's explicit go-ahead.
+Confirm you're on the PR branch and that HEAD is at or ahead of the published tip:
 
-If the very next `jj git push` would announce `Move sideways bookmark`, stop and check: you almost certainly amended a pushed commit and need to undo via `jj op log` / `jj undo` and redo from a fresh `jj new <bookmark>`.
+```bash
+git branch --show-current
+git status -sb              # want [ahead N] or clean — never a divergence
+```
+
+Then make commits on top normally. Never `git commit --amend`, `git rebase`, or `git push --force` past the published tip without the user's explicit go-ahead.
+
+If a plain `git push` is ever rejected as non-fast-forward, stop — you almost certainly amended a pushed commit. Recover with `git reset --soft origin/<branch>` (keeps your changes staged) and re-commit on top instead of reaching for `--force`.
 
 1. Make the code change. Keep it surgical — don't sneak unrelated cleanups into a review-driven commit.
 2. Run the relevant tests / lint for the touched files (`cargo test -p <crate>`, `cargo clippy`, `cargo fmt`, `npx playwright test <spec>`, etc. — whatever the repo's `CLAUDE.md` prescribes).
-3. Commit + push the fix. For jj repos, after editing on top of the new change: `jj describe -m "fix: …"` → `jj bookmark move <bookmark> --to @` → `jj git push -b <bookmark>`. The push should be a fast-forward — if the output mentions a *sideways* move, that's a force push and step 0 was skipped.
+3. Commit + push the fix: `git add -u` → `git commit -m "fix: …"` → `git push`. The push must be a fast-forward — if git rejects it as non-fast-forward, step 0 was skipped.
 4. **Reply to the comment thread** with a short note explaining what changed. Reference the new commit SHA when useful.
 
    ```bash
@@ -142,4 +148,4 @@ The user reads the summary and either approves the deferrals/pushbacks (you then
 - **Never** mark a thread resolved without an actual fix landing on the branch first. "Will fix later" is a defer, not a fix-now.
 - **Never** batch-resolve threads with a single boilerplate reply. Each fix gets its own targeted note.
 - **Never** invent a commit SHA in a reply — only reference SHAs that exist on the pushed branch.
-- **Never** force-push a PR branch to land review fixes. On jj that means starting the fix-now flow with `jj new <bookmark>` (step 0 above) so edits stack on top of the pushed commit instead of amending it. A `jj git push` that announces `Move sideways bookmark <name>` is a force push and means step 0 was skipped — back out and redo.
+- **Never** force-push a PR branch to land review fixes. Fixes stack as new commits on top of the pushed tip (step 0 above) — never an amend, never a rebase. If `git push` is rejected as non-fast-forward, step 0 was skipped: recover with `git reset --soft origin/<branch>` and re-commit, rather than reaching for `--force`.

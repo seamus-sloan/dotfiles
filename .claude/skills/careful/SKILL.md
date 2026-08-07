@@ -17,7 +17,7 @@ A `PreToolUse` hook on the `Bash` tool that prompts before destructive commands.
 | `git push --force` / `-f` | `git push -f origin main` | History rewrite |
 | `git reset --hard` | `git reset --hard HEAD~3` | Uncommitted work loss |
 | `git checkout .` / `git restore .` | `git checkout .` | Uncommitted work loss |
-| `jj abandon` / `jj op restore` | `jj abandon @` | Change loss / op-log rewrite |
+| `git branch -D` / `git worktree remove --force` | `git branch -D feat` | Unmerged branch / worktree discard |
 | `kubectl delete` | `kubectl delete pod foo` | Production impact |
 | `docker rm -f` / `docker system prune` | `docker system prune -a` | Container/image loss |
 
