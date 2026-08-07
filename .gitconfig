@@ -1,0 +1,19 @@
+[user]
+	email = seamus.sloan@gmail.com
+	name = seamus
+[push]
+	autoSetupRemote = true
+	default = simple
+[filter "lfs"]
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+	clean = git-lfs clean -- %f
+[diff]
+	tool = meld
+[difftool "vscode"]
+        cmd = code --wait --diff $LOCAL $REMOTE	
+[url "git@github.com:"]
+	insteadOf = https://github.com/
+[branch]
+	autoSetupMerge = simple

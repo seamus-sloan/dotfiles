@@ -72,7 +72,7 @@ gh pr checks <pr> --watch --fail-fast
 
 - `--watch` blocks until every required check finishes; exit code `0` means all passed.
 - **A `SKIPPED` Playwright check is not a pass** if the diff touches UI — it means the `run_ui_tests` label is missing (step 1). Add the label, which re-triggers the workflow, then re-watch.
-- **On a red check:** read the failing job's log (`gh run view <run-id> --log-failed`). If it's a genuine failure in this branch's code (fmt, clippy, a broken test), that's real work — **fix it** on a fresh stacked commit exactly like a fix-now review comment (`jj new <bookmark>` first — never amend the pushed tip), push, and re-watch the checks (no re-review wait — Copilot only reviews once). If it's plainly a flake or infra blip, re-run (`gh run rerun <run-id> --failed`) once; if it fails again the same way, stop and surface it — don't merge over red.
+- **On a red check:** read the failing job's log (`gh run view <run-id> --log-failed`). If it's a genuine failure in this branch's code (fmt, clippy, a broken test), that's real work — **fix it** as a fresh commit on top, exactly like a fix-now review comment (never `--amend` the pushed tip), push, and re-watch the checks (no re-review wait — Copilot only reviews once). If it's plainly a flake or infra blip, re-run (`gh run rerun <run-id> --failed`) once; if it fails again the same way, stop and surface it — don't merge over red.
 
 ## 5. Merge
 
@@ -87,8 +87,8 @@ Squash is the default (one commit per PR, matching the conventional-commit-title
 After merging, sync local state so the next change starts from the merged tip:
 
 ```bash
-jj git fetch    # jj repos — then `jj new <trunk-bookmark>` for the next change
-git fetch && git checkout main && git pull   # git repos
+wt remove                    # drop the merged worktree and its local branch
+wt switch ^ && git pull      # default-branch worktree, updated
 ```
 
 **Confirm the issue closed.** If this PR was meant to resolve a tracked issue, verify the merge auto-closed it (the `Closes #<n>` line from step 1 does this):
@@ -111,7 +111,7 @@ Print a compact end-state summary: PR URL, merge status (merged / stopped-before
 
 ## Hard rules
 
-- **Never amend or force-push a pushed commit.** Every fix — review-driven or CI-driven — stacks a fresh commit (`jj new <bookmark>` *before* editing). A `jj git push` that says `Move sideways bookmark` means this rule was broken; back out and redo. (Same invariant as `resolve-pr-comments` §0.)
+- **Never amend or force-push a pushed commit.** Every fix — review-driven or CI-driven — lands as a fresh commit on top. A `git push` rejected as non-fast-forward means this rule was broken; recover with `git reset --soft origin/<branch>` and redo. (Same invariant as `resolve-pr-comments` §0.)
 - **Never merge with an open deferral or push-back.** Those are the user's decisions; auto-merge is suspended until they're cleared.
 - **Never merge over a red or falsely-skipped required check.** A `SKIPPED` E2E check on a UI diff is a missing label, not a pass.
 - **Never request Copilot as a reviewer** — it's auto-attached.

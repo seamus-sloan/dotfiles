@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Sync `.claude/` between this repo and `~/.claude/`.
+"""Sync tracked dotfiles between this repo and `$HOME`.
 
 Usage:
-    python sync.py install [--dry-run]   # repo/.claude  -> ~/.claude
-    python sync.py save    [--dry-run]   # ~/.claude     -> repo/.claude
-    python sync.py fetch                 # jj git fetch + dry-run install
-    python sync.py commit                # save + jj describe/move/push
+    python sync.py install [--dry-run]   # repo    -> ~
+    python sync.py save    [--dry-run]   # ~       -> repo
+    python sync.py fetch                 # git pull + dry-run install
+    python sync.py commit                # save + git commit/push
 
-Top-level children of `repo/.claude/` define what is tracked. Files sync by
-exact path; directories mirror their entire subtree (new files discovered,
-deletions propagated). Nothing outside those tracked entries is ever touched.
+`TRACKED` lists the home-relative paths under management. Files sync by exact
+path; directories mirror their entire subtree (new files discovered, deletions
+propagated). Nothing outside those tracked entries is ever touched.
 """
 
 from __future__ import annotations
@@ -21,9 +21,18 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_CLAUDE = Path(__file__).resolve().parent / ".claude"
-REPO_ROOT = REPO_CLAUDE.parent
-HOME_CLAUDE = Path.home() / ".claude"
+REPO_ROOT = Path(__file__).resolve().parent
+HOME = Path.home()
+
+# Home-relative paths under management. A directory mirrors its whole subtree,
+# so keep these narrow: `~/.claude` as a whole would drag in tasks/, telemetry/,
+# projects/, and every cache Claude Code writes there.
+TRACKED = [
+    ".claude/CLAUDE.md",
+    ".claude/skills",
+    ".gitconfig",
+    ".config/worktrunk/config.toml",
+]
 
 
 class Stats:
@@ -33,10 +42,19 @@ class Stats:
         self.unchanged = 0
 
 
-def tracked_entries(repo_claude: Path) -> list[Path]:
-    if not repo_claude.is_dir():
-        sys.exit(f"error: {repo_claude} does not exist or is not a directory")
-    return sorted(repo_claude.iterdir())
+def entry_kind(rel: str) -> str:
+    """Whether a tracked entry is a file or a directory.
+
+    Checks the repo first, then `$HOME`, so an entry newly added to TRACKED
+    that so far only exists on this machine still resolves on its first save.
+    """
+    for base in (REPO_ROOT, HOME):
+        path = base / rel
+        if path.is_dir():
+            return "dir"
+        if path.is_file():
+            return "file"
+    return "missing"
 
 
 def relative_files(root: Path) -> set[Path]:
@@ -107,63 +125,93 @@ def sync_dir_entry(src_dir: Path, dst_dir: Path, name: str, dry_run: bool, stats
 
 def run(direction: str, dry_run: bool) -> None:
     if direction == "install":
-        src_root, dst_root = REPO_CLAUDE, HOME_CLAUDE
+        src_root, dst_root = REPO_ROOT, HOME
     else:
-        src_root, dst_root = HOME_CLAUDE, REPO_CLAUDE
+        src_root, dst_root = HOME, REPO_ROOT
 
     print(f"{direction}: {src_root} -> {dst_root}" + ("  [dry-run]" if dry_run else ""))
 
     stats = Stats()
-    for entry in tracked_entries(REPO_CLAUDE):
-        name = entry.name
-        src = src_root / name
-        dst = dst_root / name
-        if entry.is_file():
-            sync_file_entry(src, dst, name, dry_run, stats)
-        elif entry.is_dir():
-            sync_dir_entry(src, dst, name, dry_run, stats)
+    for rel in TRACKED:
+        kind = entry_kind(rel)
+        if kind == "missing":
+            print(f"{'missing':<12} {rel} (absent from both repo and ~ — skipped)")
+            continue
+
+        src = src_root / rel
+        dst = dst_root / rel
+
+        # A tracked root absent on the source side means it hasn't been
+        # bootstrapped yet, not that it was deleted. Mirroring here would wipe
+        # the destination copy, so skip. Deletions *within* a tracked directory
+        # still propagate via sync_dir_entry.
+        if not src.exists():
+            print(f"{'skip':<12} {rel} (absent on source side — nothing to sync)")
+            continue
+
+        if kind == "file":
+            sync_file_entry(src, dst, rel, dry_run, stats)
+        else:
+            sync_dir_entry(src, dst, rel, dry_run, stats)
 
     print(f"\n{stats.copied} copied, {stats.deleted} deleted, {stats.unchanged} unchanged")
 
 
-def run_jj(args: list[str]) -> None:
-    subprocess.run(["jj", *args], cwd=REPO_ROOT, check=True)
+def run_git(args: list[str]) -> None:
+    subprocess.run(["git", *args], cwd=REPO_ROOT, check=True)
+
+
+def git_out(args: list[str]) -> str:
+    result = subprocess.run(
+        ["git", *args], cwd=REPO_ROOT, capture_output=True, text=True, check=True
+    )
+    return result.stdout.strip()
+
+
+def ensure_on_main() -> None:
+    """Get onto `main`; a colocated jj repo leaves git HEAD detached."""
+    if git_out(["branch", "--show-current"]) == "main":
+        return
+    if git_out(["rev-parse", "HEAD"]) != git_out(["rev-parse", "main"]):
+        sys.exit("error: HEAD is detached away from main — resolve that before syncing")
+    run_git(["checkout", "main"])
 
 
 def fetch() -> None:
-    run_jj(["git", "fetch"])
-    run_jj(["new", "main"])
+    ensure_on_main()
+    run_git(["pull", "--ff-only"])
     print()
     run("install", dry_run=True)
 
 
 def commit() -> None:
+    ensure_on_main()
     run("save", dry_run=False)
     print()
-    run_jj(["st"])
+    run_git(["status", "--short"])
 
     message = ""
     while not message:
         message = input("Commit message: ").strip()
 
-    confirm = input(f'Commit "{message}", move main, and push? [y/N] ').strip().lower()
+    confirm = input(f'Commit "{message}" to main and push? [y/N] ').strip().lower()
     if confirm != "y":
         print("aborted")
         return
 
-    run_jj(["describe", "-m", message])
-    run_jj(["bookmark", "move", "main", "--to", "@"])
-    run_jj(["git", "push"])
+    run_git(["add", "-A"])
+    run_git(["commit", "-m", message])
+    run_git(["push"])
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     subs = parser.add_subparsers(dest="command", required=True)
-    for cmd, help_text in [("install", "repo/.claude -> ~/.claude"), ("save", "~/.claude -> repo/.claude")]:
+    for cmd, help_text in [("install", "repo -> ~"), ("save", "~ -> repo")]:
         sp = subs.add_parser(cmd, help=help_text)
         sp.add_argument("--dry-run", action="store_true", help="preview without writing")
-    subs.add_parser("fetch", help="jj git fetch + dry-run install")
-    subs.add_parser("commit", help="save + jj describe/move/push")
+    subs.add_parser("fetch", help="git pull + dry-run install")
+    subs.add_parser("commit", help="save + git commit/push")
 
     args = parser.parse_args()
     if args.command == "fetch":

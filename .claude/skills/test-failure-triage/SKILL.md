@@ -20,16 +20,15 @@ Two buckets:
 | **Pre-existing** | Same test also fails on the base branch | Don't block. Note in PR body. |
 | **In-branch** | Passes on base, fails on this branch | Block. Investigate before pushing. |
 
-To check, run the same test against the base revision. For jj:
+To check, run the same test against the base branch. Under worktrunk the base branch already has its own worktree, so there is nothing to stash — switch, run, switch back:
 
 ```bash
-# Snapshot current branch results, then test against main
-jj new main                                              # detached at main
+wt switch ^                                              # ^ = the default-branch worktree
 <run failing test command>                               # capture pass/fail
-jj edit @-                                               # back to your branch
+wt switch -                                              # - = back to the previous worktree
 ```
 
-For git:
+If you're in a plain checkout rather than a worktree:
 
 ```bash
 git stash
@@ -44,7 +43,7 @@ If the same test fails on `main` → pre-existing. If it passes on `main` → in
 Block the push. Drive a fix via the `investigate` skill — root cause first, then a regression test.
 
 Once fixed:
-- Re-run the full suite on `@`.
+- Re-run the full suite on the branch.
 - Commit the fix as part of the same branch (or a follow-up change before push).
 
 ## 3b. Pre-existing failure flow
