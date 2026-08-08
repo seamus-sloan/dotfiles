@@ -23,6 +23,8 @@ echo '[ -f "$HOME/.config/shell/aliases.zsh" ] && source "$HOME/.config/shell/al
 ```
 
 After that, `python sync.py install` keeps the aliases themselves up to date.
+You don't have to remember the second line — `install` prints it as a reminder
+whenever `~/.zshrc` isn't sourcing the aliases yet, and stays quiet once it is.
 
 ## Aliases
 

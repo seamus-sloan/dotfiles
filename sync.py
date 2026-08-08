@@ -27,11 +27,14 @@ HOME = Path.home()
 # Home-relative paths under management. A directory mirrors its whole subtree,
 # so keep these narrow: `~/.claude` as a whole would drag in tasks/, telemetry/,
 # projects/, and every cache Claude Code writes there.
+ALIASES_REL = ".config/shell/aliases.zsh"
+ALIASES_SOURCE_LINE = f'[ -f "$HOME/{ALIASES_REL}" ] && source "$HOME/{ALIASES_REL}"'
+
 TRACKED = [
     ".claude/CLAUDE.md",
     ".claude/skills",
     ".gitconfig",
-    ".config/shell/aliases.zsh",
+    ALIASES_REL,
     ".config/worktrunk/config.toml",
 ]
 
@@ -156,6 +159,32 @@ def run(direction: str, dry_run: bool) -> None:
             sync_dir_entry(src, dst, rel, dry_run, stats)
 
     print(f"\n{stats.copied} copied, {stats.deleted} deleted, {stats.unchanged} unchanged")
+
+    if direction == "install":
+        remind_about_aliases()
+
+
+def remind_about_aliases() -> None:
+    """Nudge if `~/.zshrc` doesn't source the aliases file we just installed.
+
+    `.zshrc` is deliberately untracked — it holds per-machine PATH exports — so
+    a fresh machine receives `aliases.zsh` with nothing sourcing it. Stays quiet
+    once the line is present, so this only speaks up when it's actually needed.
+    """
+    if not (HOME / ALIASES_REL).is_file():
+        return
+    try:
+        zshrc = (HOME / ".zshrc").read_text()
+    except OSError:
+        zshrc = ""
+    if ALIASES_REL in zshrc:
+        return
+
+    print(
+        f"\nHey! Your aliases are installed, but ~/.zshrc doesn't source them yet."
+        f"\nTo load them, run:\n\n    echo '{ALIASES_SOURCE_LINE}' >> ~/.zshrc"
+        f"\n\nThen open a new shell (or: source ~/.zshrc)."
+    )
 
 
 def run_git(args: list[str]) -> None:
