@@ -31,6 +31,7 @@ TRACKED = [
     ".claude/CLAUDE.md",
     ".claude/skills",
     ".gitconfig",
+    ".config/shell/aliases.zsh",
     ".config/worktrunk/config.toml",
 ]
 

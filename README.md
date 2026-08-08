@@ -1,8 +1,33 @@
 # dot-files
 
-Ran this to put into my .zshrc:
+Tracked dotfiles synced between this repo and `$HOME` by `sync.py`. See the
+`TRACKED` list in [sync.py](sync.py) for what's under management.
+
 ```
+python sync.py install [--dry-run]   # repo -> ~
+python sync.py save    [--dry-run]   # ~    -> repo
+python sync.py fetch                 # git pull + dry-run install
+python sync.py commit                # save + git commit/push
+```
+
+## Per-machine setup
+
+`~/.zshrc` is deliberately **not** tracked — it holds machine-specific `PATH`
+exports (homebrew, nvm, Miniforge) that shouldn't be overwritten. Shared aliases
+live in the tracked `.config/shell/aliases.zsh` instead, so each new machine
+needs these two lines appended to its `~/.zshrc` once:
+
+```sh
 echo "\n# Claude Sync\nalias sync='python ~/Repos/dot-files/sync.py'\n" >> ~/.zshrc
+echo '[ -f "$HOME/.config/shell/aliases.zsh" ] && source "$HOME/.config/shell/aliases.zsh"' >> ~/.zshrc
 ```
 
+After that, `python sync.py install` keeps the aliases themselves up to date.
 
+## Aliases
+
+| Alias | What it does |
+| --- | --- |
+| `flushdns` | Flush the macOS DNS cache. |
+| `sync` | Shorthand for `python ~/Repos/dot-files/sync.py`. |
+| `fresh [branch]` | Fetch, switch to the branch's worktree, fast-forward it, and `wt sync` the stack. Defaults to the repo's default branch (`main` or `master`); `fresh staging` targets any other branch. |
