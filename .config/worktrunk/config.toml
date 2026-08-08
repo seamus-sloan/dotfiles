@@ -72,7 +72,7 @@ pre-start = "wt step copy-ignored --require-include"
 # ### Claude Code
 #
 [commit.generation]
-command = "MAX_THINKING_TOKENS=0 claude -p --no-session-persistence --model=haiku --tools='' --safe-mode --setting-sources='user' --system-prompt=''"
+command = "MAX_THINKING_TOKENS=1000 claude -p --no-session-persistence --model=sonnet --tools='' --safe-mode --setting-sources='user' --system-prompt=''"
 #
 # ### Codex
 #
@@ -103,7 +103,7 @@ command = "MAX_THINKING_TOKENS=0 claude -p --no-session-persistence --model=haik
 # Persistent flag values for `wt list`. Override on command line as needed.
 #
 [list]
-summary = false    # Enable LLM branch summaries (requires [commit.generation])
+summary = true	     # Enable LLM branch summaries (requires [commit.generation])
 #
 # full = false       # Show CI status and LLM summaries (--full)
 # branches = false   # Include branches without worktrees (--branches)
