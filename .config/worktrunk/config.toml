@@ -102,8 +102,8 @@ command = "MAX_THINKING_TOKENS=0 claude -p --no-session-persistence --model=haik
 #
 # Persistent flag values for `wt list`. Override on command line as needed.
 #
-# [list]
-# summary = false    # Enable LLM branch summaries (requires [commit.generation])
+[list]
+summary = false    # Enable LLM branch summaries (requires [commit.generation])
 #
 # full = false       # Show CI status and LLM summaries (--full)
 # branches = false   # Include branches without worktrees (--branches)

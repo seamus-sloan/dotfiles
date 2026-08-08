@@ -20,6 +20,12 @@
   - Push with `git push`. `push.autoSetupRemote` is enabled globally, so the first push on a new branch sets the upstream automatically — do not pass `--set-upstream`, and never pass `--force`.
   - Refer to `wt --help`, `wt <command> --help`, or https://worktrunk.dev for more information
   - For parallel agent work, give each agent its own worktrunk worktree via `wt switch --create <branch>` rather than the Agent tool's `isolation: "worktree"`, so the worktrees show up in `wt list` and get cleaned up by `wt remove`.
+  - **Never call the `EnterWorktree` tool.** It hardcodes `<repo>/.claude/worktrees/<name>` and a `claude/<name>` branch, which is outside worktrunk's layout and naming. Always `wt switch --create <branch>` instead. If a session *starts* inside `.claude/worktrees/` (the app's Claude Worktrees toggle), create the proper `wt` worktree and work there via absolute paths — `ExitWorktree` can't move a session the harness placed.
+- **Starting new work — always begin in a fresh worktree, before touching any file.** When I ask you to work on something new (an issue, a bug, a feature):
+  1. Look into the issue first — read the relevant code/issue and determine whether a code change is actually required. If none is, say so and stop; don't create a branch.
+  2. Determine a branch name per the naming rules below (prompt me for a ticket; fall back to `u/sloan/<feature>` if there isn't one).
+  3. **Immediately** run `wt switch -c <branch_name>` (`-c` is shorthand for `--create`) to create the branch + worktree, and do all the work there.
+  4. Only then make the first Edit/Write. Never investigate-then-edit on `main`.
 - Use branch naming patterns that match a ticket name. For example:
   - ADA-123/updates-some-setting
   - AAA-6721/refactor-launch
