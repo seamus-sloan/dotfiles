@@ -1,6 +1,8 @@
 [user]
 	email = seamus.sloan@gmail.com
 	name = seamus
+[core]
+	hooksPath = ~/.config/git/hooks
 [push]
 	autoSetupRemote = true
 	default = simple

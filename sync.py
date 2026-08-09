@@ -35,6 +35,7 @@ TRACKED = [
     ".claude/skills",
     ".gitconfig",
     ALIASES_REL,
+    ".config/git/hooks",
     ".config/worktrunk/config.toml",
 ]
 

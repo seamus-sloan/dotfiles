@@ -1,0 +1,33 @@
+#!/bin/sh
+# Global prepare-commit-msg hook (installed via dot-files sync.py + core.hooksPath).
+# On ticket-named branches (ABC-123/slug) appends a "Refs: ABC-123" trailer to
+# the commit message. Branches without a ticket prefix (u/sloan/*, main, ...)
+# are left completely untouched.
+
+msg_file="$1"
+msg_source="$2"
+
+inject_ticket() {
+    # Merge/squash messages carry their own history — don't decorate them.
+    case "$msg_source" in
+        merge | squash) return 0 ;;
+    esac
+
+    branch=$(git branch --show-current 2>/dev/null)
+    [ -n "$branch" ] || return 0 # detached HEAD (rebase etc.)
+
+    ticket=${branch%%/*}
+    printf '%s' "$ticket" | grep -Eq '^[A-Z]+-[0-9]+$' || return 0
+
+    # Already referenced anywhere in the message? Don't add it twice.
+    grep -v '^#' "$msg_file" | grep -q "$ticket" && return 0
+
+    git interpret-trailers --in-place --trailer "Refs: $ticket" "$msg_file"
+}
+
+inject_ticket
+
+# Chain to the repo's own hook, if it has one (core.hooksPath replaces it otherwise).
+local_hook="$(git rev-parse --git-common-dir)/hooks/$(basename "$0")"
+[ -x "$local_hook" ] && exec "$local_hook" "$@"
+exit 0
