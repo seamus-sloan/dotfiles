@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import filecmp
+import os
 import shutil
 import subprocess
 import sys
@@ -23,6 +24,38 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent
 HOME = Path.home()
+
+# Every per-file line is printed through `report`, so the action word is the one
+# place a color is chosen: green means something was written, red means
+# something was removed, grey means nothing happened. Colors are dropped
+# entirely when stdout isn't a terminal (a piped `sync fetch` stays greppable)
+# or when NO_COLOR is set — see https://no-color.org.
+ANSI = {"green": "\033[32m", "grey": "\033[90m", "red": "\033[31m"}
+RESET = "\033[0m"
+
+ACTION_COLORS = {
+    "copy": "green",
+    "would copy": "green",
+    "delete": "red",
+    "would delete": "red",
+    "would rmdir": "red",
+    "skip": "grey",
+    "keep": "grey",
+    "missing": "grey",
+}
+
+USE_COLOR = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
+
+
+def paint(text: str, color: str | None) -> str:
+    if not color or not USE_COLOR:
+        return text
+    return f"{ANSI[color]}{text}{RESET}"
+
+
+def report(action: str, detail: str) -> None:
+    """Print one aligned `<action> <path>` line, colored by the action."""
+    print(paint(f"{action:<12} {detail}", ACTION_COLORS.get(action)))
 
 # Home-relative paths under management. A directory mirrors its whole subtree,
 # so keep these narrow: `~/.claude` as a whole would drag in tasks/, telemetry/,
@@ -75,7 +108,7 @@ def relative_files(root: Path) -> set[Path]:
 
 def copy_file(src: Path, dst: Path, dry_run: bool, rel_label: str, stats: Stats) -> None:
     action = "would copy" if dry_run else "copy"
-    print(f"{action:<12} {rel_label}")
+    report(action, rel_label)
     if not dry_run:
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)
@@ -84,11 +117,11 @@ def copy_file(src: Path, dst: Path, dry_run: bool, rel_label: str, stats: Stats)
 
 def delete_file(path: Path, dry_run: bool, rel_label: str, stats: Stats, allow: bool = True) -> None:
     if not allow:
-        print(f"{'keep':<12} {rel_label} (deletion declined)")
+        report("keep", f"{rel_label} (deletion declined)")
         stats.kept += 1
         return
     action = "would delete" if dry_run else "delete"
-    print(f"{action:<12} {rel_label}")
+    report(action, rel_label)
     if not dry_run:
         path.unlink()
     stats.deleted += 1
@@ -100,7 +133,7 @@ def prune_empty_dirs(root: Path, dry_run: bool) -> None:
     for path in sorted(root.rglob("*"), key=lambda p: len(p.parts), reverse=True):
         if path.is_dir() and not any(path.iterdir()):
             if dry_run:
-                print(f"{'would rmdir':<12} {path.relative_to(root.parent)}/")
+                report("would rmdir", f"{path.relative_to(root.parent)}/")
             else:
                 path.rmdir()
 
@@ -108,7 +141,7 @@ def prune_empty_dirs(root: Path, dry_run: bool) -> None:
 def sync_file_entry(src: Path, dst: Path, rel_label: str, dry_run: bool, stats: Stats, allow_deletes: bool = True) -> None:
     if src.is_file():
         if dst.is_file() and filecmp.cmp(src, dst, shallow=False):
-            print(f"{'skip':<12} {rel_label} (identical)")
+            report("skip", f"{rel_label} (identical)")
             stats.unchanged += 1
         else:
             copy_file(src, dst, dry_run, rel_label, stats)
@@ -125,7 +158,7 @@ def sync_dir_entry(src_dir: Path, dst_dir: Path, name: str, dry_run: bool, stats
         src = src_dir / rel
         dst = dst_dir / rel
         if dst.is_file() and filecmp.cmp(src, dst, shallow=False):
-            print(f"{'skip':<12} {label} (identical)")
+            report("skip", f"{label} (identical)")
             stats.unchanged += 1
         else:
             copy_file(src, dst, dry_run, label, stats)
@@ -169,7 +202,7 @@ def confirm_install_deletions(force: bool) -> bool:
 
     print("install would DELETE from ~ (present locally, absent in repo):")
     for label in doomed:
-        print(f"    {label}")
+        print(paint(f"    {label}", "red"))
     print("If these are un-saved local work, answer no and run `sync save` first.")
     try:
         answer = input(f"Delete {len(doomed)} file(s)? [y/N] ").strip().lower()
@@ -201,7 +234,7 @@ def run(direction: str, dry_run: bool, force: bool = False) -> None:
     for rel in TRACKED:
         kind = entry_kind(rel)
         if kind == "missing":
-            print(f"{'missing':<12} {rel} (absent from both repo and ~ — skipped)")
+            report("missing", f"{rel} (absent from both repo and ~ — skipped)")
             continue
 
         src = src_root / rel
@@ -212,7 +245,7 @@ def run(direction: str, dry_run: bool, force: bool = False) -> None:
         # the destination copy, so skip. Deletions *within* a tracked directory
         # still propagate via sync_dir_entry.
         if not src.exists():
-            print(f"{'skip':<12} {rel} (absent on source side — nothing to sync)")
+            report("skip", f"{rel} (absent on source side — nothing to sync)")
             continue
 
         if kind == "file":
