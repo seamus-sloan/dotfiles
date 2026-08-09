@@ -11,6 +11,19 @@ alias flushdns='sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder'
 # Dotfiles sync — see ~/Repos/dot-files/sync.py for subcommands.
 alias sync='python ~/Repos/dot-files/sync.py'
 
+# Shorthand for `wt switch`. Every argument carries through, so the full
+# vocabulary still works:
+#
+#     sw                 # picker
+#     sw main            # an existing worktree
+#     sw -c feature      # create the branch and its worktree
+#     sw -c feature -b staging
+#
+# Expands in the current shell to worktrunk's own `wt` shell function, so the
+# directory change survives — a `wt` binary called from a subshell could not
+# move the parent shell.
+alias sw='wt switch'
+
 # Remove every worktree and branch worktrunk reports as integrated — its changes
 # already reach the default branch, including through a squash-merge or rebase
 # where the commit history differs but the content matches.
