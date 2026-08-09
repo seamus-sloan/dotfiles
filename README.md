@@ -31,6 +31,25 @@ After that, `python sync.py install` keeps the aliases themselves up to date.
 You don't have to remember the second line — `install` prints it as a reminder
 whenever `~/.zshrc` isn't sourcing the aliases yet, and stays quiet once it is.
 
+## Git hooks
+
+`.gitconfig` points `core.hooksPath` at `.config/git/hooks`, so these run in
+every repo (bypass any of them once with `git commit --no-verify`). Each one
+chains to the repo's own hook of the same name afterwards.
+
+| Hook | What it does |
+| --- | --- |
+| `pre-commit` | Scans staged changes with `gitleaks`, and rejects a branch named for another repo's issue prefix. |
+| `commit-msg` | Requires a conventional subject (`feat:` / `fix:` / `chore:` / `none:`). |
+| `prepare-commit-msg` | Adds a `Refs:` trailer on ticket-named branches. |
+
+Branches for GitHub issues are named `<PREFIX>-<issue number>/<slug>`, with the
+prefix per repo in [`.config/git/issue-prefixes`](.config/git/issue-prefixes) —
+`omnibus` issue #123 is `OMNI-123/…`, `dot-files` #123 is `DOT-123/…`. A ticket
+in the current repo's prefix gets a `Refs: #123` trailer so GitHub links the
+commit to the issue; any other key (a Jira ticket) is copied in verbatim, and a
+repo missing from the file opts out of all of it.
+
 ## Aliases
 
 | Alias | What it does |

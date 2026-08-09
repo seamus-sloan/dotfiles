@@ -1,11 +1,17 @@
 #!/bin/sh
 # Global prepare-commit-msg hook (installed via dot-files sync.py + core.hooksPath).
 # On ticket-named branches (ABC-123/slug) appends a "Refs: ABC-123" trailer to
-# the commit message. Branches without a ticket prefix (u/sloan/*, main, ...)
-# are left completely untouched.
+# the commit message. When the ticket uses this repo's own GitHub prefix (DOT-12
+# inside dot-files) the trailer becomes "Refs: #12" instead, so GitHub resolves
+# it into the issue. Branches without a ticket prefix (u/sloan/*, main, ...) are
+# left completely untouched.
 
 msg_file="$1"
 msg_source="$2"
+
+hook_dir=$(dirname "$0")
+[ -f "$hook_dir/lib-ticket.sh" ] || hook_dir="${XDG_CONFIG_HOME:-$HOME/.config}/git/hooks"
+. "$hook_dir/lib-ticket.sh"
 
 inject_ticket() {
     # Merge/squash messages carry their own history — don't decorate them.
@@ -13,16 +19,19 @@ inject_ticket() {
         merge | squash) return 0 ;;
     esac
 
-    branch=$(git branch --show-current 2>/dev/null)
-    [ -n "$branch" ] || return 0 # detached HEAD (rebase etc.)
+    # Fails on detached HEAD (rebase etc.) and on branches with no ticket.
+    ticket=$(branch_ticket) || return 0
 
-    ticket=${branch%%/*}
-    printf '%s' "$ticket" | grep -Eq '^[A-Z]+-[0-9]+$' || return 0
+    # This repo's own prefix means the number is a GitHub issue, so reference it
+    # the way GitHub links. Foreign keys (Jira, another repo) go in verbatim.
+    ref=$ticket
+    mine=$(repo_prefix)
+    [ -n "$mine" ] && [ "${ticket%%-*}" = "$mine" ] && ref="#${ticket#*-}"
 
     # Already referenced anywhere in the message? Don't add it twice.
-    grep -v '^#' "$msg_file" | grep -q "$ticket" && return 0
+    grep -v '^#' "$msg_file" | grep -qF "$ref" && return 0
 
-    git interpret-trailers --in-place --trailer "Refs: $ticket" "$msg_file"
+    git interpret-trailers --in-place --trailer "Refs: $ref" "$msg_file"
 }
 
 inject_ticket
