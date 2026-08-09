@@ -39,6 +39,7 @@ TRACKED = [
     ".gitconfig",
     ALIASES_REL,
     ".config/git/hooks",
+    ".config/git/issue-prefixes",
     ".config/worktrunk/config.toml",
 ]
 

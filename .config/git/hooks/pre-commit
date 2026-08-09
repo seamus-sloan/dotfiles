@@ -1,8 +1,32 @@
 #!/bin/sh
 # Global pre-commit hook (installed via dot-files sync.py + core.hooksPath).
-# Scans staged changes for secrets with gitleaks. Warns but does not block
-# when gitleaks isn't installed, so fresh machines can still commit.
+# Checks the branch's ticket prefix against the repo, then scans staged changes
+# for secrets with gitleaks. Warns but does not block when gitleaks isn't
+# installed, so fresh machines can still commit.
 # One-off bypass: git commit --no-verify
+
+hook_dir=$(dirname "$0")
+[ -f "$hook_dir/lib-ticket.sh" ] || hook_dir="${XDG_CONFIG_HOME:-$HOME/.config}/git/hooks"
+. "$hook_dir/lib-ticket.sh"
+
+# A branch carrying *another* repo's issue prefix (OMNI-12/... inside dot-files)
+# is misnamed — its number points into the wrong repo's issues. Prefixes the map
+# has never heard of are Jira keys and pass untouched.
+check_ticket_prefix() {
+    ticket=$(branch_ticket) || return 0
+    mine=$(repo_prefix) || return 0
+    prefix=${ticket%%-*}
+    [ "$prefix" = "$mine" ] && return 0
+    known_prefixes | grep -qx "$prefix" || return 0
+
+    echo "pre-commit: branch ticket $ticket belongs to another repo's issues." >&2
+    echo "  this repo files issues as $mine-<number>" >&2
+    echo "  rename with: git branch -m $mine-${ticket#*-}/<slug>" >&2
+    echo "  bypass once with: git commit --no-verify" >&2
+    return 1
+}
+
+check_ticket_prefix || exit 1
 
 if command -v gitleaks >/dev/null 2>&1; then
     if ! gitleaks git --pre-commit --staged --redact --no-banner; then

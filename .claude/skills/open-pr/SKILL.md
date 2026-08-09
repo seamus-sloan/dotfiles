@@ -60,6 +60,8 @@ If this PR fully resolves a tracked issue, the body **must** contain a GitHub cl
 - **Partially addresses** it (one sub-task of a larger issue) → reference it *without* a closing keyword: `Part of #<n>` / `Sub-task of #<n>`. A closing keyword here would wrongly close the parent.
 - **A bare `#<n>`** mention (no keyword) never closes anything — it only cross-links. Don't rely on it to close an issue.
 
+A ticket in the repo's own prefix **is** a GitHub issue number: `DOT-12/slug` → `Closes #12`, `OMNI-340/slug` → `Closes #340`. The prefixes live in `~/.config/git/issue-prefixes`; a key that isn't listed there (`ADA-120`) is a Jira ticket and closes nothing on GitHub.
+
 Determine the issue number from the branch name (`<TICKET>/…`, `<n>/…`, `feat/<n>-…`), the conversation ("ship issue #N", a pasted issue URL), or the commit body. When you can't tell whether the PR *fully* resolves it, prefer `Part of #<n>` and say so — under-closing is recoverable, wrongly closing a parent epic is noise. If the template has a dedicated "Closes/Fixes" or "Related issues" field, use that instead of appending to Summary.
 
 ## 4. Assignee — always the current user

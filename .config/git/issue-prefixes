@@ -1,0 +1,11 @@
+# Branch ticket prefixes for repos whose work is tracked in GitHub issues.
+# Branches are named <PREFIX>-<issue number>/<slug>, so issue #123 in omnibus
+# becomes OMNI-123/some-slug. Read by the global git hooks in ./hooks.
+#
+# Repos absent from this list have no GitHub prefix — their branches use a Jira
+# key (ADA-123/...) or the u/sloan/<feature> fallback, and the hooks stay out of
+# the way. Add a row when a new repo starts tracking work in GitHub issues.
+#
+# <repo name>   <PREFIX>
+omnibus         OMNI
+dot-files       DOT

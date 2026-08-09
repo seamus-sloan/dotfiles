@@ -30,7 +30,13 @@
   - ADA-123/updates-some-setting
   - AAA-6721/refactor-launch
   - AE-90/more-tests
+- **Work that comes from a GitHub issue uses the repo's own prefix plus the issue number** — issue #123 becomes `OMNI-123/<slug>` in `omnibus` and `DOT-123/<slug>` in `dot-files`.
+  - The prefixes live in `~/.config/git/issue-prefixes` (`<repo name>  <PREFIX>`, one per line). Read that file rather than inventing a prefix, and add a row when a new repo starts tracking work in GitHub issues.
+  - The number is *always* the GitHub issue number, so `DOT-123` means issue #123 and the PR body closes it with `Closes #123`.
+  - A repo absent from that file has no GitHub prefix — use its Jira ticket, or the `u/sloan/<feature>` fallback.
+  - Two global git hooks back this up: `pre-commit` rejects a commit whose branch carries a *different* repo's prefix, and `prepare-commit-msg` turns `DOT-123` into a `Refs: #123` trailer so the commit links to the issue. Unknown prefixes (Jira keys) pass through untouched.
 - Prompt the user for a ticket when creating a branch.
+  - No prompt is needed when the work is a GitHub issue — derive the branch from the repo prefix and the issue number.
   - If the user says there is no ticket, fallback to u/sloan/<feature> for the branch name
 - Use conventional commits in all repositories by prefixing commits with `feat`, `fix`, or `chore`
 - Break work into stacked branches when:

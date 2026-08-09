@@ -89,6 +89,10 @@ gh issue create -R seamus-sloan/omnibus \
   --body "$BODY"
 ```
 
+The branch that implements the issue takes the repo's prefix from
+`~/.config/git/issue-prefixes` plus the issue number — issue #123 in `omnibus`
+is `OMNI-123/<slug>`, in `dot-files` `DOT-123/<slug>`.
+
 ## Epics and sub-issues (large features only)
 
 Sub-issues are GitHub's epic/story equivalent. Create the parent and children as
