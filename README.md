@@ -37,4 +37,5 @@ whenever `~/.zshrc` isn't sourcing the aliases yet, and stays quiet once it is.
 | --- | --- |
 | `flushdns` | Flush the macOS DNS cache. |
 | `sync` | Shorthand for `python ~/Repos/dot-files/sync.py`. |
+| `sw [args]` | Shorthand for `wt switch`. All arguments pass through: `sw` for the picker, `sw main` for an existing worktree, `sw -c feature` to create one. |
 | `fresh [branch]` | Fetch, switch to the branch's worktree, fast-forward it, remove every worktree and branch that has already landed, then `wt sync` whatever stack is left. Defaults to the repo's default branch (`main` or `master`); `fresh staging` targets any other branch. Cleanup is local only and defers to worktrunk's own integration check, so squash-merged branches are caught and anything holding unmerged work is refused. Needs `jq`; without it the cleanup step is skipped with a warning. |
