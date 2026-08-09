@@ -31,6 +31,29 @@ After that, `python sync.py install` keeps the aliases themselves up to date.
 You don't have to remember the second line — `install` prints it as a reminder
 whenever `~/.zshrc` isn't sourcing the aliases yet, and stays quiet once it is.
 
+## Neovim
+
+`.config/nvim` is the whole Neovim config — a [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim)
+fork, absorbed here so it syncs with everything else instead of living in its
+own repo. It's a `vim.pack` setup (Neovim 0.12+), so plugins are pinned in
+`nvim-pack-lock.json` and installed on first launch after a sync.
+
+Diffs are reviewed with [diffview.nvim](https://github.com/sindrets/diffview.nvim),
+which lays a change out the way a GitHub PR does — file panel left, diff right,
+`<Tab>` between files:
+
+| Keymap | Shows |
+| --- | --- |
+| `<leader>gd` | Uncommitted work. |
+| `<leader>gb` | The whole branch against `main` — the PR "Files changed" view. Three-dot range, so commits that landed on `main` after the branch started stay out. |
+| `<leader>gc` | The last commit on its own. |
+| `<leader>gl` | This branch's commits, each openable as a diff. |
+| `<leader>gf` | The current file's history. |
+| `<leader>gq` | Close the diff and go back. |
+
+Run them from inside a worktree and the ranges resolve against that worktree's
+own HEAD. Single-file quick looks stay with gitsigns: `:Gitsigns diffthis`.
+
 ## Git hooks
 
 `.gitconfig` points `core.hooksPath` at `.config/git/hooks`, so these run in
