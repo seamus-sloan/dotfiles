@@ -2,8 +2,8 @@
 """Sync tracked dotfiles between this repo and `$HOME`.
 
 Usage:
-    python sync.py install [--dry-run]   # repo    -> ~
-    python sync.py save    [--dry-run]   # ~       -> repo
+    python sync.py install [--dry-run] [--force]   # repo    -> ~
+    python sync.py save    [--dry-run]             # ~       -> repo
     python sync.py fetch                 # git pull + dry-run install
     python sync.py commit                # save + git commit/push
 
@@ -32,7 +32,10 @@ ALIASES_SOURCE_LINE = f'[ -f "$HOME/{ALIASES_REL}" ] && source "$HOME/{ALIASES_R
 
 TRACKED = [
     ".claude/CLAUDE.md",
+    ".claude/settings.json",
+    ".claude/hooks",
     ".claude/skills",
+    ".claude/statusline-command.sh",
     ".gitconfig",
     ALIASES_REL,
     ".config/git/hooks",
@@ -45,6 +48,7 @@ class Stats:
         self.copied = 0
         self.deleted = 0
         self.unchanged = 0
+        self.kept = 0
 
 
 def entry_kind(rel: str) -> str:
@@ -77,7 +81,11 @@ def copy_file(src: Path, dst: Path, dry_run: bool, rel_label: str, stats: Stats)
     stats.copied += 1
 
 
-def delete_file(path: Path, dry_run: bool, rel_label: str, stats: Stats) -> None:
+def delete_file(path: Path, dry_run: bool, rel_label: str, stats: Stats, allow: bool = True) -> None:
+    if not allow:
+        print(f"{'keep':<12} {rel_label} (deletion declined)")
+        stats.kept += 1
+        return
     action = "would delete" if dry_run else "delete"
     print(f"{action:<12} {rel_label}")
     if not dry_run:
@@ -96,7 +104,7 @@ def prune_empty_dirs(root: Path, dry_run: bool) -> None:
                 path.rmdir()
 
 
-def sync_file_entry(src: Path, dst: Path, rel_label: str, dry_run: bool, stats: Stats) -> None:
+def sync_file_entry(src: Path, dst: Path, rel_label: str, dry_run: bool, stats: Stats, allow_deletes: bool = True) -> None:
     if src.is_file():
         if dst.is_file() and filecmp.cmp(src, dst, shallow=False):
             print(f"{'skip':<12} {rel_label} (identical)")
@@ -104,10 +112,10 @@ def sync_file_entry(src: Path, dst: Path, rel_label: str, dry_run: bool, stats: 
         else:
             copy_file(src, dst, dry_run, rel_label, stats)
     elif dst.is_file():
-        delete_file(dst, dry_run, rel_label, stats)
+        delete_file(dst, dry_run, rel_label, stats, allow_deletes)
 
 
-def sync_dir_entry(src_dir: Path, dst_dir: Path, name: str, dry_run: bool, stats: Stats) -> None:
+def sync_dir_entry(src_dir: Path, dst_dir: Path, name: str, dry_run: bool, stats: Stats, allow_deletes: bool = True) -> None:
     src_files = relative_files(src_dir)
     dst_files = relative_files(dst_dir)
 
@@ -123,18 +131,70 @@ def sync_dir_entry(src_dir: Path, dst_dir: Path, name: str, dry_run: bool, stats
 
     for rel in sorted(dst_files - src_files):
         label = f"{name}/{rel.as_posix()}"
-        delete_file(dst_dir / rel, dry_run, label, stats)
+        delete_file(dst_dir / rel, dry_run, label, stats, allow_deletes)
 
-    prune_empty_dirs(dst_dir, dry_run)
+    if allow_deletes:
+        prune_empty_dirs(dst_dir, dry_run)
 
 
-def run(direction: str, dry_run: bool) -> None:
+def planned_deletions(src_root: Path, dst_root: Path) -> list[str]:
+    """Destination files a real sync would delete, mirroring `run`'s walk."""
+    doomed: list[str] = []
+    for rel in TRACKED:
+        kind = entry_kind(rel)
+        src, dst = src_root / rel, dst_root / rel
+        if kind == "missing" or not src.exists():
+            continue
+        if kind == "file":
+            if not src.is_file() and dst.is_file():
+                doomed.append(rel)
+        else:
+            for sub in sorted(relative_files(dst) - relative_files(src)):
+                doomed.append(f"{rel}/{sub.as_posix()}")
+    return doomed
+
+
+def confirm_install_deletions(force: bool) -> bool:
+    """Deletions under `~` need a yes; copies are recoverable from git, these aren't.
+
+    Files present in `~` but not in the repo are usually work authored on this
+    machine that hasn't been `save`d yet — wiping them silently is how a new
+    skill dies. Returns whether deletions may proceed; declining (or a
+    non-interactive stdin) still lets the copy pass run.
+    """
+    doomed = planned_deletions(REPO_ROOT, HOME)
+    if not doomed or force:
+        return True
+
+    print("install would DELETE from ~ (present locally, absent in repo):")
+    for label in doomed:
+        print(f"    {label}")
+    print("If these are un-saved local work, answer no and run `sync save` first.")
+    try:
+        answer = input(f"Delete {len(doomed)} file(s)? [y/N] ").strip().lower()
+    except EOFError:
+        answer = ""
+    if answer != "y":
+        print("keeping local files — copies will still sync\n")
+        return False
+    print()
+    return True
+
+
+def run(direction: str, dry_run: bool, force: bool = False) -> None:
     if direction == "install":
         src_root, dst_root = REPO_ROOT, HOME
     else:
         src_root, dst_root = HOME, REPO_ROOT
 
     print(f"{direction}: {src_root} -> {dst_root}" + ("  [dry-run]" if dry_run else ""))
+
+    # Guard install deletions only: `save`'s destination is the repo, where a
+    # bad deletion is one `git checkout` away. Dry runs stay unguarded so
+    # `fetch` keeps showing the full plan, deletions included.
+    allow_deletes = True
+    if direction == "install" and not dry_run:
+        allow_deletes = confirm_install_deletions(force)
 
     stats = Stats()
     for rel in TRACKED:
@@ -155,11 +215,14 @@ def run(direction: str, dry_run: bool) -> None:
             continue
 
         if kind == "file":
-            sync_file_entry(src, dst, rel, dry_run, stats)
+            sync_file_entry(src, dst, rel, dry_run, stats, allow_deletes)
         else:
-            sync_dir_entry(src, dst, rel, dry_run, stats)
+            sync_dir_entry(src, dst, rel, dry_run, stats, allow_deletes)
 
-    print(f"\n{stats.copied} copied, {stats.deleted} deleted, {stats.unchanged} unchanged")
+    summary = f"\n{stats.copied} copied, {stats.deleted} deleted, {stats.unchanged} unchanged"
+    if stats.kept:
+        summary += f", {stats.kept} kept (deletions declined)"
+    print(summary)
 
     if direction == "install":
         remind_about_aliases()
@@ -241,6 +304,8 @@ def main() -> None:
     for cmd, help_text in [("install", "repo -> ~"), ("save", "~ -> repo")]:
         sp = subs.add_parser(cmd, help=help_text)
         sp.add_argument("--dry-run", action="store_true", help="preview without writing")
+        if cmd == "install":
+            sp.add_argument("--force", action="store_true", help="delete from ~ without confirming")
     subs.add_parser("fetch", help="git pull + dry-run install")
     subs.add_parser("commit", help="save + git commit/push")
 
@@ -250,7 +315,7 @@ def main() -> None:
     elif args.command == "commit":
         commit()
     else:
-        run(args.command, args.dry_run)
+        run(args.command, args.dry_run, getattr(args, "force", False))
 
 
 if __name__ == "__main__":

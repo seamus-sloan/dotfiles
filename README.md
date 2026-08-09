@@ -4,11 +4,16 @@ Tracked dotfiles synced between this repo and `$HOME` by `sync.py`. See the
 `TRACKED` list in [sync.py](sync.py) for what's under management.
 
 ```
-python sync.py install [--dry-run]   # repo -> ~
-python sync.py save    [--dry-run]   # ~    -> repo
-python sync.py fetch                 # git pull + dry-run install
-python sync.py commit                # save + git commit/push
+python sync.py install [--dry-run] [--force]   # repo -> ~
+python sync.py save    [--dry-run]             # ~    -> repo
+python sync.py fetch                           # git pull + dry-run install
+python sync.py commit                          # save + git commit/push
 ```
+
+`install` prompts before deleting anything from `~` — files present locally
+but absent from the repo are usually un-`save`d work, not deletions. Declining
+keeps them and still syncs everything else; `--force` skips the prompt.
+Deletions toward the repo (`save`) stay unprompted since git can restore them.
 
 ## Per-machine setup
 
