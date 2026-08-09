@@ -1,0 +1,26 @@
+#!/bin/sh
+# Global commit-msg hook (installed via dot-files sync.py + core.hooksPath).
+# Enforces conventional commit subjects: feat / fix / chore / none.
+# One-off bypass: git commit --no-verify
+
+msg_file="$1"
+
+subject=$(awk 'NF && $0 !~ /^#/ {print; exit}' "$msg_file")
+
+case "$subject" in
+    "" | "Merge "* | "Revert "* | fixup!* | squash!* | amend!*)
+        ;;
+    *)
+        if ! printf '%s' "$subject" | grep -Eq '^(feat|fix|chore|none)!?: '; then
+            echo "commit-msg: subject must start with feat: / fix: / chore: / none:" >&2
+            echo "  got: $subject" >&2
+            echo "  bypass once with: git commit --no-verify" >&2
+            exit 1
+        fi
+        ;;
+esac
+
+# Chain to the repo's own hook, if it has one (core.hooksPath replaces it otherwise).
+local_hook="$(git rev-parse --git-common-dir)/hooks/$(basename "$0")"
+[ -x "$local_hook" ] && exec "$local_hook" "$@"
+exit 0

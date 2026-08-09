@@ -1,0 +1,22 @@
+#!/bin/sh
+# Global pre-commit hook (installed via dot-files sync.py + core.hooksPath).
+# Scans staged changes for secrets with gitleaks. Warns but does not block
+# when gitleaks isn't installed, so fresh machines can still commit.
+# One-off bypass: git commit --no-verify
+
+if command -v gitleaks >/dev/null 2>&1; then
+    if ! gitleaks git --pre-commit --staged --redact --no-banner; then
+        echo "" >&2
+        echo "pre-commit: gitleaks found potential secrets in staged changes." >&2
+        echo "  false positive? add a 'gitleaks:allow' comment on the line, or bypass" >&2
+        echo "  once with: git commit --no-verify" >&2
+        exit 1
+    fi
+else
+    echo "pre-commit: gitleaks not installed — skipping secret scan (brew install gitleaks)" >&2
+fi
+
+# Chain to the repo's own hook, if it has one (core.hooksPath replaces it otherwise).
+local_hook="$(git rev-parse --git-common-dir)/hooks/$(basename "$0")"
+[ -x "$local_hook" ] && exec "$local_hook" "$@"
+exit 0
