@@ -73,8 +73,16 @@ TRACKED = [
     ALIASES_REL,
     ".config/git/hooks",
     ".config/git/issue-prefixes",
+    ".config/nvim",
     ".config/worktrunk/config.toml",
 ]
+
+# Names never mirrored, matched against every path component inside a tracked
+# directory. `.git`/`.jj` because a nested repo copied into this one becomes a
+# broken gitlink — and ~/.config/nvim keeps its own checkout until that fork is
+# retired. The rest is machine-local noise: caches, Finder droppings, and
+# Claude Code's per-project permission grants.
+UNSYNCED = {".git", ".jj", "__pycache__", ".DS_Store", "settings.local.json"}
 
 
 class Stats:
@@ -101,9 +109,23 @@ def entry_kind(rel: str) -> str:
 
 
 def relative_files(root: Path) -> set[Path]:
+    """Every syncable file under `root`, relative to it.
+
+    Both directions walk through here, so an `UNSYNCED` name is invisible to the
+    whole sync: never copied, and never counted as a deletion on the other side.
+    """
     if not root.is_dir():
         return set()
-    return {p.relative_to(root) for p in root.rglob("*") if p.is_file()}
+    files: set[Path] = set()
+    for dirpath, dirnames, filenames in os.walk(root):
+        # Pruning in place is what keeps the walk out of a 1 MB `.git` entirely.
+        dirnames[:] = [d for d in dirnames if d not in UNSYNCED]
+        here = Path(dirpath)
+        for name in filenames:
+            path = here / name
+            if name not in UNSYNCED and path.is_file():
+                files.add(path.relative_to(root))
+    return files
 
 
 def copy_file(src: Path, dst: Path, dry_run: bool, rel_label: str, stats: Stats) -> None:
@@ -128,10 +150,21 @@ def delete_file(path: Path, dry_run: bool, rel_label: str, stats: Stats, allow: 
 
 
 def prune_empty_dirs(root: Path, dry_run: bool) -> None:
+    """Drop directories a sync emptied, deepest first so parents collapse too.
+
+    `UNSYNCED` trees are off limits: a sync never writes into `~/.config/nvim/.git`,
+    so an empty `.git/refs/tags/` in there is that repo's business, not ours.
+    """
     if not root.is_dir():
         return
-    for path in sorted(root.rglob("*"), key=lambda p: len(p.parts), reverse=True):
-        if path.is_dir() and not any(path.iterdir()):
+    candidates = []
+    for dirpath, dirnames, _ in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in UNSYNCED]
+        if (path := Path(dirpath)) != root:
+            candidates.append(path)
+
+    for path in sorted(candidates, key=lambda p: len(p.parts), reverse=True):
+        if not any(path.iterdir()):
             if dry_run:
                 report("would rmdir", f"{path.relative_to(root.parent)}/")
             else:
