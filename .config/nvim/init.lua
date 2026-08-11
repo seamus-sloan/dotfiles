@@ -559,6 +559,11 @@ do
       -- To jump back, press <C-t>.
       vim.keymap.set('n', 'grd', builtin.lsp_definitions, { buffer = buf, desc = '[G]oto [D]efinition' })
 
+      -- Same thing on `gd`. Buffer-local, so it only shadows the built-in
+      -- "goto local declaration" where an LSP is actually attached — otherwise
+      -- `gd` on an imported symbol just lands on the import statement.
+      vim.keymap.set('n', 'gd', builtin.lsp_definitions, { buffer = buf, desc = '[G]oto [D]efinition' })
+
       -- Fuzzy find all the symbols in your current document.
       -- Symbols are things like variables, functions, types, etc.
       vim.keymap.set('n', 'gO', builtin.lsp_document_symbols, { buffer = buf, desc = 'Open Document Symbols' })
@@ -718,7 +723,7 @@ do
     --    https://github.com/pmizio/typescript-tools.nvim
     --
     -- But for many setups, the LSP (`ts_ls`) will work just fine
-    -- ts_ls = {},
+    vtsls = {}, -- TypeScript/JavaScript
 
     stylua = {}, -- Used to format Lua code
 
