@@ -69,3 +69,40 @@ fresh() {
     _fresh_prune_integrated
     wt sync
 }
+
+# Pinned `z` destinations, checked before zoxide's own ranking.
+#
+# zoxide scores purely by frecency, so a keyword that appears in several visited
+# paths lands wherever the score happens to be highest that week — `z mock`
+# drifting between ~/Repos/mock-controller and platform's e2e
+# mockControllerServer_v3 is exactly that. A pin makes the common ones fixed,
+# and adds the short forms we say out loud (`mc`) that zoxide can't match at all,
+# since it does substring matching rather than fuzzy initials.
+#
+# Keys must be the *entire* query, so nothing here narrows what plain zoxide can
+# reach: `z mockcontrollerserver` still finds the e2e directory.
+typeset -gA ZOXIDE_PINS=(
+    mc          "$HOME/Repos/mock-controller"
+    mock        "$HOME/Repos/mock-controller"
+)
+
+# Wraps the `z` that `zoxide init zsh` defines. That one is a thin shim over
+# `__zoxide_z`, which is what this falls through to, so every non-pinned query —
+# `z -`, `z foo bar`, bare `z` — behaves exactly as before. The chpwd hook zoxide
+# installs still fires on the `cd` below, so pins keep earning frecency and stay
+# near the top of `zi`.
+#
+# Must be sourced *after* `eval "$(zoxide init zsh)"` in ~/.zshrc, or init will
+# clobber this definition.
+z() {
+    if (( $# == 1 )) && [[ -n ${ZOXIDE_PINS[$1]-} ]]; then
+        local dest=${ZOXIDE_PINS[$1]}
+        if [[ ! -d $dest ]]; then
+            print -u2 "z: pinned '$1' -> $dest (no such directory)"
+            return 1
+        fi
+        __zoxide_cd "$dest"
+        return
+    fi
+    __zoxide_z "$@"
+}
