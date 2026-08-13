@@ -1,0 +1,7 @@
+**/.claude/settings.local.json
+
+# Per-repo worktrunk include list, selecting which gitignored files
+# `wt step copy-ignored` carries into a new worktree. Local to this machine —
+# the set of secrets worth copying is personal, not something a repo should
+# dictate to everyone who clones it.
+.worktreeinclude
