@@ -1,0 +1,6 @@
+# Private host inventory — cloned/refreshed into ~/.ssh/config.d on apply.
+# Force a refresh before the period elapses with `chezmoi apply -R`.
+[".ssh/config.d"]
+    type = "git-repo"
+    url = "git@github.com:seamus-sloan/dotfiles-ssh.git"
+    refreshPeriod = "168h"

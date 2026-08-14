@@ -22,6 +22,7 @@ identical on every machine — no templating, no secrets, just files.
 | **Worktrunk** | [`home/dot_config/worktrunk`](home/dot_config/worktrunk) | [`wt`](https://worktrunk.dev) config for worktree-per-branch workflow |
 | **Claude Code** | [`home/dot_claude`](home/dot_claude) | Global instructions, skills, hooks, and statusline |
 | **Homebrew** | [`home/dot_Brewfile`](home/dot_Brewfile) | Shared package baseline — installs everywhere, never uninstalls machine-local extras |
+| **SSH** | [`home/private_dot_ssh`](home/private_dot_ssh) | Root config + defaults; host inventory pulled from a private side repo into `~/.ssh/config.d`, machine-local hosts in `~/.ssh/config.local` |
 
 ## Layout
 

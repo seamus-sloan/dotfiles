@@ -1,0 +1,13 @@
+# ~/.ssh/config — managed by chezmoi. Host inventories live in ~/.ssh/config.d,
+# populated from the private dotfiles-ssh repo by chezmoi's external; put
+# machine-local hosts in ~/.ssh/config.local (never synced, wins conflicts).
+
+Include config.local
+Include config.d/*
+
+# ── defaults ──────────────────────────────────────────────────────────────────
+Host *
+    AddKeysToAgent yes
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+    ServerAliveInterval 60
