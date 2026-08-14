@@ -8,4 +8,4 @@
 #
 # <repo name>   <PREFIX>
 omnibus         OMNI
-dot-files       DOT
+dotfiles        DOT

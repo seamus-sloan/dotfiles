@@ -1,0 +1,3 @@
+# Machine-local Claude Code permission grants inside the nvim tree; each
+# machine keeps its own, the exact_nvim mirror must not delete or manage it.
+.config/nvim/.claude

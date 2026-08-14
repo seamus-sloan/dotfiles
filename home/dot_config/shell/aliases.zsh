@@ -1,4 +1,4 @@
-# Shared shell aliases — synced across machines via ~/Repos/dot-files.
+# Shared shell aliases — synced across machines via chezmoi (~/Repos/dotfiles).
 #
 # Source this from ~/.zshrc (which stays machine-local, since it holds
 # per-machine PATH exports):
@@ -7,9 +7,6 @@
 
 # Flush the macOS DNS cache.
 alias flushdns='sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder'
-
-# Dotfiles sync — see ~/Repos/dot-files/sync.py for subcommands.
-alias sync='python ~/Repos/dot-files/sync.py'
 
 # Shorthand for `wt switch`. Every argument carries through, so the full
 # vocabulary still works:

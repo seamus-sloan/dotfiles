@@ -1,83 +1,70 @@
-# dot-files
+# dotfiles
 
-Tracked dotfiles synced between this repo and `$HOME` by `sync.py`. See the
-`TRACKED` list in [sync.py](sync.py) for what's under management.
+[![chezmoi](https://img.shields.io/badge/managed%20with-chezmoi-blue?logo=chezmoi&logoColor=white)](https://chezmoi.io)
+[![macOS](https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white)](#)
+[![Neovim](https://img.shields.io/badge/Neovim-57A143?logo=neovim&logoColor=white)](#neovim)
+[![zsh](https://img.shields.io/badge/shell-zsh-orange)](#shell)
+
+My macOS dotfiles, managed with [chezmoi](https://chezmoi.io). Config is
+identical on every machine — no templating, no secrets, just files.
+
+<!-- TODO: drop a terminal screenshot at docs/assets/terminal.png and uncomment:
+![terminal](docs/assets/terminal.png)
+-->
+
+## What's inside
+
+| Tool | Config | Notes |
+|---|---|---|
+| **Neovim** | [`home/dot_config/exact_nvim`](home/dot_config/exact_nvim) | [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim)-based; this repo is the canonical copy |
+| **Git** | [`home/dot_gitconfig`](home/dot_gitconfig), [`home/dot_config/private_git`](home/dot_config/private_git) | Global hooks enforce ticket-prefixed branches and auto-link commits to GitHub issues |
+| **Shell** | [`home/dot_config/shell`](home/dot_config/shell) | Shared zsh aliases, sourced from a machine-local `~/.zshrc` |
+| **Worktrunk** | [`home/dot_config/worktrunk`](home/dot_config/worktrunk) | [`wt`](https://worktrunk.dev) config for worktree-per-branch workflow |
+| **Claude Code** | [`home/dot_claude`](home/dot_claude) | Global instructions, skills, hooks, and statusline |
+
+## Layout
 
 ```
-python sync.py install [--dry-run] [--force]   # repo -> ~
-python sync.py save    [--dry-run]             # ~    -> repo
-python sync.py fetch                           # git pull + dry-run install
-python sync.py commit                          # save + git commit/push
+.
+├── .chezmoiroot          # tells chezmoi the source tree lives in home/
+├── docs/
+└── home/                 # mirrors $HOME in chezmoi source notation
+    ├── .chezmoi.toml.tmpl        # records the clone location on init
+    ├── .chezmoiscripts/          # run-once machine bootstrap
+    ├── dot_gitconfig             # → ~/.gitconfig
+    ├── dot_claude/               # → ~/.claude  (instructions, skills, hooks)
+    └── dot_config/               # → ~/.config
+        ├── exact_nvim/           #   full-mirror: deletions propagate
+        ├── private_git/exact_hooks/  # global hooks (executable_ = +x)
+        ├── shell/
+        └── worktrunk/
 ```
 
-`install` prompts before deleting anything from `~` — files present locally
-but absent from the repo are usually un-`save`d work, not deletions. Declining
-keeps them and still syncs everything else; `--force` skips the prompt.
-Deletions toward the repo (`save`) stay unprompted since git can restore them.
+`exact_` directories are fully mirrored — files deleted from the repo are
+deleted from `$HOME` on apply. Everything else is add/update only.
 
-## Per-machine setup
-
-`~/.zshrc` is deliberately **not** tracked — it holds machine-specific `PATH`
-exports (homebrew, nvm, Miniforge) that shouldn't be overwritten. Shared aliases
-live in the tracked `.config/shell/aliases.zsh` instead, so each new machine
-needs these two lines appended to its `~/.zshrc` once:
+## Install (new machine)
 
 ```sh
-echo "\n# Claude Sync\nalias sync='python ~/Repos/dot-files/sync.py'\n" >> ~/.zshrc
-echo '[ -f "$HOME/.config/shell/aliases.zsh" ] && source "$HOME/.config/shell/aliases.zsh"' >> ~/.zshrc
+brew install chezmoi
+git clone git@github.com:seamus-sloan/dotfiles.git ~/Repos/dotfiles
+chezmoi init --source ~/Repos/dotfiles --apply
 ```
 
-After that, `python sync.py install` keeps the aliases themselves up to date.
-You don't have to remember the second line — `install` prints it as a reminder
-whenever `~/.zshrc` isn't sourcing the aliases yet, and stays quiet once it is.
+`init` writes `~/.config/chezmoi/chezmoi.toml` pointing at the clone, so every
+later `chezmoi` command works without `--source`.
 
-## Neovim
+## Daily use
 
-`.config/nvim` is the whole Neovim config — a [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim)
-fork, absorbed here so it syncs with everything else instead of living in its
-own repo. It's a `vim.pack` setup (Neovim 0.12+), so plugins are pinned in
-`nvim-pack-lock.json` and installed on first launch after a sync.
+| I want to… | Run |
+|---|---|
+| Preview what would change | `chezmoi diff` |
+| Apply the repo to this machine | `chezmoi apply` |
+| Pull latest and apply | `chezmoi update` |
+| Capture edits made to live files | `chezmoi re-add` |
+| Start managing a new file | `chezmoi add ~/.config/foo` |
+| Jump to the repo | `chezmoi cd` |
 
-Diffs are reviewed with [diffview.nvim](https://github.com/sindrets/diffview.nvim),
-which lays a change out the way a GitHub PR does — file panel left, diff right,
-`<Tab>` between files:
-
-| Keymap | Shows |
-| --- | --- |
-| `<leader>gd` | Uncommitted work. |
-| `<leader>gb` | The whole branch against `main` — the PR "Files changed" view. Three-dot range, so commits that landed on `main` after the branch started stay out. |
-| `<leader>gc` | The last commit on its own. |
-| `<leader>gl` | This branch's commits, each openable as a diff. |
-| `<leader>gf` | The current file's history. |
-| `<leader>gq` | Close the diff and go back. |
-
-Run them from inside a worktree and the ranges resolve against that worktree's
-own HEAD. Single-file quick looks stay with gitsigns: `:Gitsigns diffthis`.
-
-## Git hooks
-
-`.gitconfig` points `core.hooksPath` at `.config/git/hooks`, so these run in
-every repo (bypass any of them once with `git commit --no-verify`). Each one
-chains to the repo's own hook of the same name afterwards.
-
-| Hook | What it does |
-| --- | --- |
-| `pre-commit` | Scans staged changes with `gitleaks`, and rejects a branch named for another repo's issue prefix. |
-| `commit-msg` | Requires a conventional subject (`feat:` / `fix:` / `chore:` / `none:`). |
-| `prepare-commit-msg` | Adds a `Refs:` trailer on ticket-named branches. |
-
-Branches for GitHub issues are named `<PREFIX>-<issue number>/<slug>`, with the
-prefix per repo in [`.config/git/issue-prefixes`](.config/git/issue-prefixes) —
-`omnibus` issue #123 is `OMNI-123/…`, `dot-files` #123 is `DOT-123/…`. A ticket
-in the current repo's prefix gets a `Refs: #123` trailer so GitHub links the
-commit to the issue; any other key (a Jira ticket) is copied in verbatim, and a
-repo missing from the file opts out of all of it.
-
-## Aliases
-
-| Alias | What it does |
-| --- | --- |
-| `flushdns` | Flush the macOS DNS cache. |
-| `sync` | Shorthand for `python ~/Repos/dot-files/sync.py`. |
-| `sw [args]` | Shorthand for `wt switch`. All arguments pass through: `sw` for the picker, `sw main` for an existing worktree, `sw -c feature` to create one. |
-| `fresh [branch]` | Fetch, switch to the branch's worktree, fast-forward it, remove every worktree and branch that has already landed, then `wt sync` whatever stack is left. Defaults to the repo's default branch (`main` or `master`); `fresh staging` targets any other branch. Cleanup is local only and defers to worktrunk's own integration check, so squash-merged branches are caught and anything holding unmerged work is refused. Needs `jq`; without it the cleanup step is skipped with a warning. |
+Edits can start from either end: change the source file and `chezmoi apply`,
+or change the live file and `chezmoi re-add`. Commit and push from the repo
+like any other project.
