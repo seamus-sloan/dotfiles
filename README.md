@@ -21,6 +21,7 @@ identical on every machine — no templating, no secrets, just files.
 | **Shell** | [`home/dot_config/shell`](home/dot_config/shell) | Shared zsh aliases, sourced from a machine-local `~/.zshrc` |
 | **Worktrunk** | [`home/dot_config/worktrunk`](home/dot_config/worktrunk) | [`wt`](https://worktrunk.dev) config for worktree-per-branch workflow |
 | **Claude Code** | [`home/dot_claude`](home/dot_claude) | Global instructions, skills, hooks, and statusline |
+| **Homebrew** | [`home/dot_Brewfile`](home/dot_Brewfile) | Shared package baseline — installs everywhere, never uninstalls machine-local extras |
 
 ## Layout
 
@@ -64,6 +65,7 @@ later `chezmoi` command works without `--source`.
 | Capture edits made to live files | `chezmoi re-add` |
 | Start managing a new file | `chezmoi add ~/.config/foo` |
 | Jump to the repo | `chezmoi cd` |
+| Add a package on every machine | `brew install foo`, add it to `~/.Brewfile`, `chezmoi re-add` |
 
 Edits can start from either end: change the source file and `chezmoi apply`,
 or change the live file and `chezmoi re-add`. Commit and push from the repo

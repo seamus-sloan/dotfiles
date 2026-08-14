@@ -1,0 +1,59 @@
+# Shared baseline for every machine. `brew bundle --global` installs what's
+# listed and never uninstalls extras, so each machine can layer additional
+# packages on top freely — this file is the floor, not a mirror. Re-run
+# automatically by chezmoi (.chezmoiscripts/run_onchange_brew-bundle.sh.tmpl)
+# whenever this file changes.
+
+tap "facebook/fb"
+
+# --- Core CLI ---
+brew "chezmoi"
+brew "cmake"
+brew "direnv"
+brew "docker-compose"
+brew "fzf"
+brew "gh"
+brew "gitleaks"
+brew "imagemagick"
+brew "mise"
+brew "neovim"
+brew "pipx"
+brew "pkgconf"
+brew "pre-commit"
+brew "python@3.13"
+brew "rtk"
+brew "tree-sitter"
+brew "tree-sitter-cli"
+brew "unar"
+brew "wget"
+brew "worktrunk"
+brew "zoxide"
+
+# --- Mobile / device tools ---
+brew "scrcpy"
+brew "xcbeautify"
+brew "facebook/fb/idb-companion", trusted: true
+cask "android-platform-tools"
+
+# --- Apps ---
+cask "bruno"
+cask "codex"
+cask "codexbar"
+cask "headlamp"
+
+# --- Rust tools ---
+cargo "cargo-binstall"
+cargo "cargo-generate"
+cargo "create-tauri-app"
+cargo "jj-cli"
+cargo "sadb"
+cargo "sqlx-cli"
+cargo "worktrunk-sync"
+cargo "workz"
+cargo "zellij"
+
+# --- Node tools ---
+npm "clawhub"
+npm "corepack"
+npm "markdownlint-cli"
+npm "openclaw"

@@ -1,0 +1,7 @@
+#!/bin/sh
+# Re-runs whenever ~/.Brewfile changes (the hash below embeds its content into
+# this script, which is what run_onchange keys on).
+# Brewfile hash: {{ include "dot_Brewfile" | sha256sum }}
+set -e
+command -v brew >/dev/null 2>&1 || { echo "brew missing; bootstrap first" >&2; exit 1; }
+brew bundle --global
