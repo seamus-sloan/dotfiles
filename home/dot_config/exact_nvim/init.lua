@@ -399,18 +399,28 @@ do
   -- change the command under that to load whatever the name of that colorscheme is.
   --
   -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-  vim.pack.add { gh 'folke/tokyonight.nvim' }
+  --
+  -- A Lua port of the VSCode One Monokai theme. Overriding `bg` in the palette
+  -- gives a true black editor background — the theme blends its derived shades
+  -- against `bg`, so floats, popups and the sign column follow along. The few
+  -- groups that hardcode their own dark background are flattened underneath.
+  vim.pack.add { gh 'cpea2506/one_monokai.nvim' }
   ---@diagnostic disable-next-line: missing-fields
-  require('tokyonight').setup {
-    styles = {
-      comments = { italic = false }, -- Disable italics in comments
-    },
+  require('one_monokai').setup {
+    colors = { bg = '#000000' },
+    italics = false, -- Disable italics, matching the previous colorscheme
+    highlights = function(colors)
+      return {
+        StatusLine = { fg = colors.light_gray, bg = colors.bg },
+        StatusLineNC = { fg = colors.light_gray, bg = colors.bg },
+        TabLine = { fg = colors.fg, bg = colors.bg },
+        FoldColumn = { bg = colors.bg },
+      }
+    end,
   }
 
   -- Load the colorscheme here.
-  -- Like many other themes, this one has different styles, and you could load
-  -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-  vim.cmd.colorscheme 'tokyonight-night'
+  vim.cmd.colorscheme 'one_monokai'
 
   -- Highlight todo, notes, etc in comments
   vim.pack.add { gh 'folke/todo-comments.nvim' }
