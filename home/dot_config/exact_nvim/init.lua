@@ -410,11 +410,25 @@ do
     colors = { bg = '#000000' },
     italics = false, -- Disable italics, matching the previous colorscheme
     highlights = function(colors)
+      -- Neo-tree propagates a file's git status up to its parent directories, so
+      -- painting every "changed" state the same orange makes a folder containing
+      -- changes obvious at a glance. Neo-tree registers these with `highlight
+      -- default`, so the definitions here win. Conflicts stay red to keep their
+      -- signal, and ignored entries keep linking to NeoTreeDotfile.
+      local changed = { fg = colors.orange }
       return {
         StatusLine = { fg = colors.light_gray, bg = colors.bg },
         StatusLineNC = { fg = colors.light_gray, bg = colors.bg },
         TabLine = { fg = colors.fg, bg = colors.bg },
         FoldColumn = { bg = colors.bg },
+        NeoTreeGitAdded = changed,
+        NeoTreeGitModified = changed,
+        NeoTreeGitUntracked = changed,
+        NeoTreeGitStaged = changed,
+        NeoTreeGitUnstaged = changed,
+        NeoTreeGitRenamed = changed,
+        NeoTreeGitDeleted = changed,
+        NeoTreeGitConflict = { fg = colors.red },
       }
     end,
   }
