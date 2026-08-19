@@ -1,0 +1,23 @@
+# Preferred short project codes appended to CCD session titles, so a title reads
+# "Rename Sessions - D" and the sidebar shows which repo a session belongs to.
+# Read by ~/.claude/hooks/session-title.sh; conventions documented in
+# ~/.claude/skills/session-title/SKILL.md.
+#
+# A repo absent from this list still gets a code — the hook guesses one from the
+# initials of the hyphen-separated words (mock-controller → MC, platform → P),
+# capped at three characters. This file overrides that guess.
+#
+# So a row is worth adding when the guess would be wrong, too long, or would
+# collide with a code already in use. Every row below happens to match what the
+# guess produces anyway; they're here to reserve those codes, so a later
+# mock-dashboard gets pinned to something else instead of quietly becoming a
+# second MD. Keep codes unique — nothing enforces it.
+#
+# <repo name>     <CODE>
+platform          P
+mock-controller   MC
+mock-dock         MD
+drone-userland    DU
+infrastructure    I
+dotfiles          D
+omnibus		  O
