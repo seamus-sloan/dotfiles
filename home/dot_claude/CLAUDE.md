@@ -11,6 +11,7 @@
     - `git add .` and `git commit` only affect the current worktree — each worktree has its own index and HEAD. The stash, however, is shared across every worktree of a repo.
   - Use `git fetch origin` to get the latest changes.
   - Start any new piece of work with `wt switch --create <branch_name>` — this creates the branch and its worktree together and cds into it. Use `-b <base>` to base it on something other than the default branch.
+    - **Always base a new worktree on `origin/<default>`, not the local ref: `wt switch -c <branch> -b origin/main`.** `git fetch origin` updates `origin/main` but leaves local `main` wherever it was, and a bare `wt switch -c` branches from that stale local ref — which silently produces a branch N commits behind and a conflicted PR later. Fetch, then pass `-b origin/main`.
     - `wt switch <branch>` returns to an existing worktree; bare `wt switch` opens a picker
     - `wt list` shows every worktree and its status
     - `wt remove` deletes the worktree, and the branch if it has been merged
