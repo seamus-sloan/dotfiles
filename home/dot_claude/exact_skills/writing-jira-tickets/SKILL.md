@@ -22,10 +22,10 @@ prompt when it is there; ask for whatever is left in **one batched interview** (
 
 | # | Field | Allowed values | Blank means |
 |---|-------|----------------|-------------|
-| 1 | **Epic** | Issue key (`ADA-123`), epic name to search for, or a project/space to search within | **Not allowed** — must resolve to a real epic key |
+| 1 | **Epic** | Issue key (`PROJ-123`), epic name to search for, or a project/space to search within | **Not allowed** — must resolve to a real epic key |
 | 2 | **Story Points** | A number from the project's scale (typically 1/2/3/5/8) | **Never blank** — hard gate, see Step 5 |
 | 3 | **Sprint** | Current sprint, next sprint, or blank | Backlog (field omitted) |
-| 4 | **Assignee** | Seamus, another user (name/email), or blank | Unassigned (field omitted) |
+| 4 | **Assignee** | Yourself, another user (name/email), or blank | Unassigned (field omitted) |
 | 5 | **Labels** | Any text the user gives, one or more | No labels (field omitted) |
 
 Sprint, assignee, and labels are legitimately blank-able — but **never assume blank from
@@ -33,7 +33,7 @@ silence**. If the prompt didn't mention them, they go in the interview.
 
 ## Usage
 
-- `/writing-jira-tickets include the region in the export filename, under ADA-201, 3 points, current sprint, assign to me`
+- `/writing-jira-tickets include the region in the export filename, under PROJ-201, 3 points, current sprint, assign to me`
   — everything supplied; no interview, straight to drafting and filing.
 - `/writing-jira-tickets dashboard chart renders empty when filters are cleared`
   — drafts the ticket, then interviews for all five fields.
@@ -62,7 +62,7 @@ Ticket Creation Progress:
   `apps/reporting/utils/ExportHelper.ts`).
 - Scan the invocation for each of the five fields and record which are **supplied** vs
   **unresolved**. Common phrasings:
-  - Epic — `under ADA-201`, `in the E2E Improvements epic`, `somewhere in ADA`
+  - Epic — `under PROJ-201`, `in the Reporting Cleanup epic`, `somewhere in PROJ`
   - Points — `3 points`, `sp 5`, `size it at 2`
   - Sprint — `current sprint`, `this sprint`, `next sprint`, `backlog`, `don't sprint it`
   - Assignee — `assign to me`, `for Jane`, `unassigned`, `leave it unassigned`
@@ -76,19 +76,19 @@ Ticket Creation Progress:
 
 The epic is required and accepts three input shapes. Resolve to a concrete epic key:
 
-- **Issue key given** (`ADA-201`) — `getJiraIssue` to confirm it exists and is an Epic. If
+- **Issue key given** (`PROJ-201`) — `getJiraIssue` to confirm it exists and is an Epic. If
   it isn't an Epic, say so and ask.
-- **Name given** (`the E2E Improvements epic`) — search:
-  `issuetype = Epic AND summary ~ "E2E Improvements" ORDER BY updated DESC`.
+- **Name given** (`the Reporting Cleanup epic`) — search:
+  `issuetype = Epic AND summary ~ "Reporting Cleanup" ORDER BY updated DESC`.
   One hit → use it. Several → list them with key, summary, and project and ask which.
-- **Only a space/project given** (`somewhere in ADA`) — list candidates:
-  `project = ADA AND issuetype = Epic AND statusCategory != Done ORDER BY updated DESC`,
+- **Only a space/project given** (`somewhere in PROJ`) — list candidates:
+  `project = PROJ AND issuetype = Epic AND statusCategory != Done ORDER BY updated DESC`,
   then ask.
 - **Nothing given** — ask. Offer recent epics the user has filed under
   (`parent IS NOT EMPTY AND reporter = currentUser() ORDER BY created DESC`) as options.
 
-The epic may live in a **different project** than the ticket — `ADA-787` sits under the
-`CTP-1258` epic. Take the child's project from the epic's project only if the user hasn't
+The epic may live in a **different project** than the ticket, e.g. a `PROJ-` ticket
+parented to a cross-team `PLAT-` epic. Take the child's project from the epic's project only if the user hasn't
 said otherwise; when they conflict, ask.
 
 ### Step 3: Read sibling tickets to lock the naming convention
@@ -99,12 +99,15 @@ said otherwise; when they conflict, ask.
 
   **`<Component/Feature> - <Title Case summary>`**
 
-  e.g. `Golden Files - Fix the PR Template's Contradictory Title Instruction`,
-  `E2E - Station Page CFS Priority Assertion Ignores the Agency Label Mapping`.
+  e.g. `Reporting - Add CSV Export to Usage Dashboard`,
+  `E2E - Fix the Flaky Login Redirect Assertion`.
   Match the existing component prefix exactly (spacing, casing).
 - While you have the siblings, note their **issue type**, **priority**, **labels**, and
   which story-points field they populate — all four feed later steps. Request them
-  explicitly: `fields: ["summary", "issuetype", "priority", "labels", "customfield_10024", "customfield_10016"]`.
+  explicitly, with `expand: "names"` so the custom-field IDs resolve to labels:
+  `fields: ["summary", "issuetype", "priority", "labels", "*all"]`. See
+  [reference/field-reference.md](reference/field-reference.md) for how to pick out the
+  story-points and sprint fields.
 
 ### Step 4: Draft title + description in house style
 
@@ -143,7 +146,7 @@ unresolved. Don't drip-feed one question at a time.
   proceed.
 - **Sprint** — offer `Current sprint`, `Next sprint`, `Backlog (blank)`. Resolve the
   named sprint to an ID at create time (Step 6), not now.
-- **Assignee** — offer `Me (Seamus)`, `Someone else`, `Unassigned (blank)`. If they pick
+- **Assignee** — offer `Me`, `Someone else`, `Unassigned (blank)`. If they pick
   someone else, resolve with `lookupJiraAccountId`; on multiple matches, list and ask.
 - **Labels** — offer the labels the siblings from Step 3 actually use as options
   (multiSelect), plus `No labels`. Free text is always available via "Other". Jira
@@ -180,7 +183,7 @@ then say which fields took the second pass.
 
 ### Step 8: Report
 
-Return the new key as a clickable URL (`https://flocksafety.atlassian.net/browse/<KEY>`),
+Return the new key as a clickable URL (`https://<site>.atlassian.net/browse/<KEY>`),
 then a short table of what was set — epic, type, priority, **story points**, sprint (by
 name, not ID), assignee, labels — plus any links created. Call out anything that needed a
 follow-up `editJiraIssue`.

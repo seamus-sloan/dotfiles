@@ -1,59 +1,70 @@
-# Field Reference — flocksafety.atlassian.net
+# Field Reference
 
-Field IDs verified against real tickets in the `ADA` project (Aviation Drones & ATA,
-project id `13229`, board `4683`). Company-managed projects on this site share these IDs;
-team-managed projects differ where noted.
+Jira exposes story points and sprint as **custom fields**, and their IDs differ per site.
+Never hardcode them from this doc — discover them at runtime with the recipe below and
+confirm against the epic's siblings. The IDs listed here are the values Jira Cloud
+commonly assigns, useful as a first guess only.
 
-**cloudId:** resolve with `getAccessibleAtlassianResources` rather than hardcoding. As of
-this writing the site's Jira cloudId is `12c72a9d-c0f0-4904-9a39-063c1dda1717`.
+**cloudId:** always resolve with `getAccessibleAtlassianResources`. Never hardcode.
 
 ## The five intake fields
 
-| Field | ID | Where it goes on `createJiraIssue` | Value shape |
-|-------|-----|-----------------------------------|-------------|
-| Epic | `parent` (also mirrored to `customfield_10014` "Epic Link") | top-level `parent` param | `"ADA-201"` |
-| Story Points | `customfield_10024` | `additional_fields` | number: `3` |
-| Sprint | `customfield_10020` | `additional_fields` | sprint **id** as a number: `14606` |
+| Field | Field key | Where it goes on `createJiraIssue` | Value shape |
+|-------|-----------|-----------------------------------|-------------|
+| Epic | `parent` (Jira mirrors it to the legacy "Epic Link" custom field) | top-level `parent` param | `"PROJ-201"` |
+| Story Points | custom field — discover | `additional_fields` | number: `3` |
+| Sprint | custom field — discover | `additional_fields` | sprint **id** as a number |
 | Assignee | `assignee` | top-level `assignee_account_id` param | account id string |
 | Labels | `labels` | `additional_fields` | `["tech-debt", "e2e"]` |
 
 Plus the house default: `additional_fields: {"priority": {"name": "Medium"}}`.
 
-### Story Points — `customfield_10024` vs `customfield_10016`
+## Discovering the custom field IDs
 
-Two similarly named fields exist on this site:
+Read one sibling ticket that already has points and a sprint set, asking Jira for the
+field **names** alongside the values:
 
-- **`customfield_10024` = "Story Points"** — the classic field used by company-managed
-  projects. This is the one `ADA` populates.
-- **`customfield_10016` = "Story point estimate"** — the team-managed equivalent. Null on
-  every `ADA` ticket.
-
-Don't guess. In Step 3 you already fetched siblings with both fields requested — use
-whichever one is non-null on them. If both are null across every sibling (a project that
-genuinely doesn't estimate), still ask the user for a value and set `customfield_10024`;
-say in the report that siblings carry no points.
-
-### Sprint — `customfield_10020`
-
-On read it comes back as an array of sprint objects:
-
-```json
-[{"id": 14606, "name": "ADA Sprint 12", "state": "active", "boardId": 4683,
-  "startDate": "2026-08-11T16:29:14.373Z", "endDate": "2026-08-25T16:29:07.000Z"}]
+```
+getJiraIssue(issueIdOrKey: "<a sibling>", fields: ["*all"], expand: "names")
 ```
 
-On **write**, pass the bare numeric id (`{"customfield_10020": 14606}`), not the array or
+The `names` map gives `customfield_XXXXX → "Story Points"` etc. Match on the label, not on
+a remembered number. Cache what you find for the rest of the session.
+
+Labels to look for:
+
+- **"Story Points"** — the classic field, used by company-managed projects.
+  Commonly `customfield_10024`.
+- **"Story point estimate"** — the team-managed equivalent. Commonly `customfield_10016`.
+- **"Sprint"** — commonly `customfield_10020`.
+
+A site usually has *both* story-point fields defined, with only one populated. Don't
+guess: in Step 3 you already fetched siblings — use whichever is non-null on them. If both
+are null across every sibling (a project that genuinely doesn't estimate), still ask the
+user for a value, set the classic "Story Points" field, and note in the report that
+siblings carry no points.
+
+## Sprint
+
+On read the sprint field comes back as an array of sprint objects:
+
+```json
+[{"id": 1234, "name": "Team Sprint 12", "state": "active", "boardId": 99,
+  "startDate": "...", "endDate": "..."}]
+```
+
+On **write**, pass the bare numeric id (`{"customfield_XXXXX": 1234}`), not the array or
 the name.
 
 Resolve "current" and "next" by reading the field off issues already in those sprints —
-there is no board/sprint listing tool in this MCP:
+this MCP has no board/sprint listing tool:
 
 ```
 # current sprint
-project = ADA AND sprint IN openSprints()   → fields: ["customfield_10020"]  → state "active"
+project = <KEY> AND sprint IN openSprints()   → state "active"
 
 # next sprint
-project = ADA AND sprint IN futureSprints() → fields: ["customfield_10020"]  → state "future"
+project = <KEY> AND sprint IN futureSprints() → state "future"
 ```
 
 Each returned issue's sprint array can hold several entries (an issue carried across
@@ -62,40 +73,40 @@ If `futureSprints()` yields more than one distinct future sprint, choose the ear
 `startDate`; when future sprints have no start dates, choose the lowest `id` and **say
 which sprint name you picked** in the report so a wrong guess is visible.
 
-**Backlog** = omit `customfield_10020` entirely. Do not pass `null`.
+Sprint ids roll over every couple of weeks — always re-resolve, never reuse one from a
+previous session.
 
-Known sprint ids at time of writing (they roll over — always re-resolve):
-`14606` = ADA Sprint 12 (active), `14660` = ADA Sprint 13 (future).
+**Backlog** = omit the sprint field entirely. Do not pass `null`.
 
-### Assignee
+## Assignee
 
-- **Seamus** — `atlassianUserInfo` returns the current account id. Don't hardcode it.
+- **Yourself** — `atlassianUserInfo` returns the current account id. Don't hardcode it.
 - **Someone else** — `lookupJiraAccountId` with a name or email. Multiple matches: list
   them with display name + email and ask.
 - **Unassigned** — omit `assignee_account_id`. Jira will apply the project's default
   assignee rule, which may not be "nobody"; if the created issue comes back with an
   assignee the user didn't ask for, mention it in the report.
 
-### Labels
+## Labels
 
 - Shape: `additional_fields: {"labels": ["flaky", "tech-debt"]}`.
 - **Jira rejects labels containing spaces.** Hyphenate (`tech debt` → `tech-debt`) and
   tell the user you did.
-- Labels are free-text and global on this site — a typo silently creates a new label
-  rather than erroring. Prefer offering labels the epic's siblings already use.
+- Labels are free-text and global — a typo silently creates a new label rather than
+  erroring. Prefer offering labels the epic's siblings already use.
 - No labels = omit the key.
 
-## Other fields seen on ADA tickets
+## Other fields you'll see and should leave alone
 
-| ID | Name | Notes |
-|----|------|-------|
-| `customfield_10014` | Epic Link | Legacy mirror of `parent`; Jira maintains it. Don't set it by hand. |
-| `customfield_10019` | Rank | Board ordering. Never set manually. |
-| `customfield_10023` | [CHART] Time in Status | Read-only, plugin-generated. |
-| `customfield_10486` | (approval gate, defaults "No") | Leave alone unless asked. |
+| Field | Notes |
+|-------|-------|
+| Epic Link | Legacy mirror of `parent`; Jira maintains it. Don't set it by hand. |
+| Rank | Board ordering. Never set manually. |
+| `[CHART] …` fields | Read-only, plugin-generated. |
+| Approval / compliance gates | Project-specific. Leave at their defaults unless asked. |
 
-Issue type ids: `10000` Epic, `10002` Task, `10004` Bug. Priority `Medium` = id `3`.
-Issue link type `Relates` = id `10003`.
+Issue type and priority ids vary by site — pass them by **name** (`"Task"`, `"Bug"`,
+`{"name": "Medium"}`) and let Jira resolve them.
 
 ## When a field is rejected on create
 
@@ -103,7 +114,7 @@ Issue link type `Relates` = id `10003`.
 Sprint or Story Points. Recover rather than dropping the value:
 
 1. Create the issue without the offending field.
-2. `editJiraIssue` with `{"fields": {"customfield_10024": 3}}` — the edit screen usually
+2. `editJiraIssue` with `{"fields": {"<story points field>": 3}}` — the edit screen usually
    allows what the create screen doesn't.
 3. Report which fields took the second pass.
 
