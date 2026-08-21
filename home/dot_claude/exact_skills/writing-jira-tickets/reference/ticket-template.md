@@ -27,12 +27,18 @@ makes the current behavior concrete.>
 
 ## Field defaults
 
-| Field      | Default                                  |
-| ---------- | ---------------------------------------- |
-| parent     | the epic key (e.g. `PROJ-201`)           |
-| priority   | `Medium`                                 |
-| issue type | `Story` (feature) / `Task` / `Bug`       |
-| components | empty unless siblings set one            |
+| Field        | Default                                                        |
+| ------------ | -------------------------------------------------------------- |
+| parent       | the epic key (e.g. `PROJ-201`) — required, never guessed        |
+| story points | **no default** — always proposed from the ACs and confirmed     |
+| sprint       | asked, never assumed; blank = backlog                           |
+| assignee     | asked, never assumed; blank = unassigned                        |
+| labels       | asked, never assumed; offer what siblings use                   |
+| priority     | `Medium`                                                        |
+| issue type   | `Story` (feature) / `Task` / `Bug`                              |
+| components   | empty unless siblings set one                                   |
+
+Field IDs and value shapes live in [field-reference.md](field-reference.md).
 
 ## Worked example (PROJ-560)
 
