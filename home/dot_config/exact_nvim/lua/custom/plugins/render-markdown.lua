@@ -35,10 +35,9 @@ require('render-markdown').setup {
     -- than pushing the text right, so headings stay aligned with body text.
     position = 'overlay',
     icons = nerd and { '󰲡 ', '󰲣 ', '󰲥 ', '󰲧 ', '󰲩 ', '󰲫 ' } or { '◉ ', '○ ', '◈ ', '◇ ', '▪ ', '▫ ' },
-    -- `width = 'block'` stops the background bar running to the window edge,
-    -- which reads badly in a narrow split next to a diff.
-    width = 'block',
-    min_width = 40,
+    -- Full-width background bars. 'block' would stop the bar at the end of the
+    -- heading text, which is tidier in a narrow split but much less striking.
+    width = 'full',
   },
 
   code = {
@@ -68,6 +67,10 @@ require('render-markdown').setup {
   -- No `latex` treesitter parser installed and no `utftex`/`latex2text` binary
   -- to render with, so leaving this on only produces healthcheck warnings.
   latex = { enabled = false },
+
+  -- Indent body text to match the depth of the heading above it, so a document
+  -- gets visible structure rather than everything sitting flush left.
+  indent = { enabled = true },
 }
 
 vim.keymap.set('n', '<leader>tm', '<cmd>RenderMarkdown toggle<cr>', { desc = '[T]oggle [M]arkdown rendering' })
