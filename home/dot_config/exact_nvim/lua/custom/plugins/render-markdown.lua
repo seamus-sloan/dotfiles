@@ -18,6 +18,14 @@
 
 vim.pack.add { 'https://github.com/MeanderingProgrammer/render-markdown.nvim' }
 
+-- Listing `octo` in `file_types` below is necessary but NOT sufficient.
+-- octo sets `filetype = 'octo'` on its buffers, and nothing -- neither octo nor
+-- render-markdown -- tells treesitter which grammar that filetype speaks. With
+-- no parser bound, render-markdown has nothing to walk and silently renders
+-- nothing at all. Pointing the filetype at the markdown grammar is what makes
+-- PR descriptions and review comments render.
+vim.treesitter.language.register('markdown', 'octo')
+
 -- render-markdown's out-of-the-box icons are Nerd Font glyphs, and init.lua
 -- sets `vim.g.have_nerd_font = false` -- so with the defaults every heading and
 -- checkbox would come out as a tofu box. Pick plain Unicode when the flag is
