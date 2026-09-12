@@ -742,13 +742,27 @@ do
     -- clangd = {},
     -- gopls = {},
     -- pyright = {},
-    -- rust_analyzer = {},
     --
     -- Some languages (like typescript) have entire language plugins that can be useful:
     --    https://github.com/pmizio/typescript-tools.nvim
     --
     -- But for many setups, the LSP (`ts_ls`) will work just fine
     vtsls = {}, -- TypeScript/JavaScript
+
+    -- Rust. Completion and auto-import via blink.cmp, clippy diagnostics on save, and
+    --  inlay hints behind the `<leader>th` toggle.
+    -- NOTE: the binary comes from `rustup component add rust-analyzer rust-src`, not Mason.
+    --  rust-analyzer has to match the active toolchain or proc-macro expansion breaks, so it
+    --  is excluded from `ensure_installed` below and resolved off `$PATH` instead.
+    rust_analyzer = {
+      settings = {
+        ['rust-analyzer'] = {
+          cargo = { allFeatures = true },
+          checkOnSave = true,
+          check = { command = 'clippy' },
+        },
+      },
+    },
 
     stylua = {}, -- Used to format Lua code
 
@@ -804,7 +818,9 @@ do
   --    :Mason
   --
   -- You can press `g?` for help in this menu.
-  local ensure_installed = vim.tbl_keys(servers or {})
+  --  Servers that ship with their own toolchain are enabled above but installed elsewhere.
+  local mason_ignore = { rust_analyzer = true }
+  local ensure_installed = vim.tbl_filter(function(name) return not mason_ignore[name] end, vim.tbl_keys(servers or {}))
   vim.list_extend(ensure_installed, {
     -- You can add other tools here that you want Mason to install
   })
@@ -843,7 +859,7 @@ do
     },
     -- You can also specify external formatters in here.
     formatters_by_ft = {
-      -- rust = { 'rustfmt' },
+      rust = { 'rustfmt' },
       -- Conform can also run multiple formatters sequentially
       -- python = { "isort", "black" },
       --
