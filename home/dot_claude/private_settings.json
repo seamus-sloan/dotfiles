@@ -67,7 +67,8 @@
     "ios-simulator-skill@conorluddy": true,
     "warp@claude-code-warp": true,
     "i-have-adhd@i-have-adhd": true,
-    "github@claude-plugins-official": true
+    "github@claude-plugins-official": true,
+    "hey@37signals": true
   },
   "extraKnownMarketplaces": {
     "conorluddy": {
@@ -87,8 +88,24 @@
         "source": "github",
         "repo": "ayghri/i-have-adhd"
       }
+    },
+    "37signals": {
+      "source": {
+        "source": "github",
+        "repo": "basecamp/claude-plugins"
+      }
     }
   },
   "effortLevel": "high",
-  "skipWorkflowUsageWarning": true
+  "modelSettings": {
+    "claude-opus-5": {
+      "effortLevel": "xhigh"
+    },
+    "claude-fable-5-1": {
+      "effortLevel": "xhigh"
+    }
+  },
+  "skipWorkflowUsageWarning": true,
+  "inputNeededNotifEnabled": true,
+  "agentPushNotifEnabled": true
 }
