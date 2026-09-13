@@ -740,7 +740,6 @@ do
   ---@type table<string, vim.lsp.Config>
   local servers = {
     -- clangd = {},
-    -- gopls = {},
     -- pyright = {},
     --
     -- Some languages (like typescript) have entire language plugins that can be useful:
@@ -760,6 +759,17 @@ do
           cargo = { allFeatures = true },
           checkOnSave = true,
           check = { command = 'clippy' },
+        },
+      },
+    },
+
+    -- Go. staticcheck mirrors the clippy choice above: the stricter linter, on by default.
+    --  gopls also serves formatting, so `<leader>f` works even without the conform entry.
+    gopls = {
+      settings = {
+        gopls = {
+          analyses = { unusedparams = true },
+          staticcheck = true,
         },
       },
     },
@@ -823,6 +833,7 @@ do
   local ensure_installed = vim.tbl_filter(function(name) return not mason_ignore[name] end, vim.tbl_keys(servers or {}))
   vim.list_extend(ensure_installed, {
     -- You can add other tools here that you want Mason to install
+    'goimports', -- Go formatting + import management (see conform below)
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -860,6 +871,7 @@ do
     -- You can also specify external formatters in here.
     formatters_by_ft = {
       rust = { 'rustfmt' },
+      go = { 'goimports' },
       -- Conform can also run multiple formatters sequentially
       -- python = { "isort", "black" },
       --
