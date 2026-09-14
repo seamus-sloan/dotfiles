@@ -21,6 +21,7 @@ identical on every machine — no templating, no secrets, just files.
 | **Shell** | [`home/dot_config/shell`](home/dot_config/shell) | Shared zsh aliases, sourced from a machine-local `~/.zshrc` |
 | **Worktrunk** | [`home/dot_config/worktrunk`](home/dot_config/worktrunk) | [`wt`](https://worktrunk.dev) config for worktree-per-branch workflow |
 | **Claude Code** | [`home/dot_claude`](home/dot_claude) | Global instructions, skills, hooks, and statusline |
+| **opencode** | [`home/dot_config/opencode`](home/dot_config/opencode) | Bedrock providers, plus the Claude Code config reused rather than duplicated — see [`docs/opencode.md`](docs/opencode.md) |
 | **Homebrew** | [`home/dot_Brewfile`](home/dot_Brewfile) | Shared package baseline — installs everywhere, never uninstalls machine-local extras |
 | **SSH** | [`home/private_dot_ssh`](home/private_dot_ssh) | Root config + defaults; host inventory pulled from a private side repo into `~/.ssh/config.d`, machine-local hosts in `~/.ssh/config.local` |
 
@@ -37,6 +38,7 @@ identical on every machine — no templating, no secrets, just files.
     ├── dot_claude/               # → ~/.claude  (instructions, skills, hooks)
     └── dot_config/               # → ~/.config
         ├── exact_nvim/           #   full-mirror: deletions propagate
+        ├── opencode/             #   symlink_commands → ~/.claude/commands
         ├── private_git/exact_hooks/  # global hooks (executable_ = +x)
         ├── shell/
         └── worktrunk/

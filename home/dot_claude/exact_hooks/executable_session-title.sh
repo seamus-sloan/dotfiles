@@ -8,9 +8,9 @@
 #
 #   "#123 Rename Sessions - D"
 #
-# The code comes from ~/.claude/repo-codes when the repo has a row there, and is
-# otherwise guessed from the repo name. Only a cwd that isn't a git repo at all
-# ends up with no suffix.
+# The code is resolved by ~/.claude/hooks/repo-code.sh, which the opencode
+# session-title plugin also calls so both agents label a session identically.
+# Only a cwd that isn't a git repo at all ends up with no suffix.
 #
 # The hook never renames anything itself. In the desktop app there is no way for
 # it to: /rename is a TUI-only slash command (`requires: {ink: true}`), and the
@@ -28,7 +28,6 @@ EVENT=$(jq -r '.hook_event_name // ""' <<<"$INPUT")
 SESSION=$(jq -r '.session_id // ""' <<<"$INPUT")
 CWD=$(jq -r '.cwd // ""' <<<"$INPUT")
 
-CODES="$HOME/.claude/repo-codes"
 STATE_DIR="$HOME/.claude/session-titles"
 STATE="$STATE_DIR/$SESSION"
 
@@ -45,45 +44,10 @@ inject() {
   }'
 }
 
-# Name of the repo containing $1, empty if it isn't a git repo. Uses
-# --git-common-dir so a worktree at ~/worktrees/<repo>/<branch> resolves to
-# <repo> rather than to the branch-named directory it actually sits in.
-repo_name() {
-  local dir="$1" gcd abs
-  [ -d "$dir" ] || return 0
-  gcd=$(cd "$dir" && git rev-parse --git-common-dir 2>/dev/null) || return 0
-  [ -n "$gcd" ] || return 0
-  abs=$(cd "$dir" && cd "$gcd" && pwd) || return 0
-  basename "$(dirname "$abs")"
-}
-
-# Initials of the hyphen/underscore/dot-separated words, uppercased, capped at
-# three characters: mock-controller → MC, platform → P, drone-userland → DU.
-guess_code() {
-  printf '%s' "$1" | tr '_.' '--' | awk -F'-' '{
-    out = ""
-    for (i = 1; i <= NF && length(out) < 3; i++) {
-      w = $i
-      gsub(/[^[:alnum:]]/, "", w)
-      if (w != "") out = out toupper(substr(w, 1, 1))
-    }
-    print out
-  }'
-}
-
-# Preferred code for $1 from the map, else the guess.
+# Short project code for the repo containing $1, empty when $1 isn't in a repo.
+# The lookup lives in repo-code.sh so opencode can share it.
 repo_code() {
-  local repo="$1" pinned=""
-  [ -n "$repo" ] || return 0
-  if [ -f "$CODES" ]; then
-    pinned=$(awk -v r="$repo" \
-      '!/^[[:space:]]*#/ && NF >= 2 && $1 == r { print $2; exit }' "$CODES")
-  fi
-  if [ -n "$pinned" ]; then
-    printf '%s' "$pinned"
-  else
-    guess_code "$repo"
-  fi
+  "$HOME/.claude/hooks/repo-code.sh" "$1" 2>/dev/null || true
 }
 
 case "$EVENT" in
@@ -94,7 +58,7 @@ case "$EVENT" in
   # instead of silently keeping the app's auto-generated title.
   UserPromptSubmit)
     [ -f "$STATE" ] && exit 0
-    CODE=$(repo_code "$(repo_name "$CWD")")
+    CODE=$(repo_code "$CWD")
     if [ -n "$CODE" ]; then
       SHAPE="<Objective> - $CODE"
     else
