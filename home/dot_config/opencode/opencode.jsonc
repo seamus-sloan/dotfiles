@@ -217,6 +217,26 @@
   },
   "model": "amazon-bedrock/anthropic.claude-opus-5",
 
+  // Registers the `/swarm` command set. The plugin is fetched from npm and
+  // cached by opencode; `bunx opencode-swarm update` refreshes a stale cache.
+  // Agent/model overrides live in ~/.config/opencode/opencode-swarm.json.
+  "plugin": [
+    "opencode-swarm"
+  ],
+
+  "mcp": {
+    "atlassian": {
+      "type": "remote",
+      "url": "https://mcp.atlassian.com/v2/mcp",
+      "enabled": true
+    },
+    "gmail": {
+      "type": "remote",
+      "url": "https://gmailmcp.googleapis.com/mcp/v1",
+      "enabled": true
+    }
+  },
+
   // Destructive-command guardrail — the opencode half of the `careful` skill.
   // Claude Code gets this from the ~/.claude/hooks/careful.sh PreToolUse hook;
   // opencode expresses the same intent natively, because a plugin cannot
