@@ -26,6 +26,12 @@ export const SessionTitle = async ({ client, $, directory, worktree }) => {
   const PR_URL = /https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/pull\/(\d+)/
   const PR_PREFIX = /^#\d+\s+/
 
+  // opencode seeds a session with "New session - <ISO timestamp>" and only
+  // replaces it once the title agent has summarized the conversation. Appending
+  // the code to that placeholder produced titles like
+  // "New session - 2026-09-14T17:18:54.195Z - D", so wait for the real title.
+  const PLACEHOLDER = /^New session - \d{4}-\d{2}-\d{2}T[\d:.]+Z$/
+
   // Resolved once per plugin instance: a plugin is loaded per directory, and the
   // repo a directory belongs to does not change under us. Bun's $ expands
   // neither `~` nor `$HOME`, so the script path is built here and interpolated
@@ -88,6 +94,7 @@ export const SessionTitle = async ({ client, $, directory, worktree }) => {
 
       const suffix = ` - ${code}`
       const base = session.title.replace(PR_PREFIX, "")
+      if (PLACEHOLDER.test(base)) return
       if (base.endsWith(suffix)) return
 
       const number = folded.get(session.id)

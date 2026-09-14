@@ -14,6 +14,7 @@
   - Use `git fetch origin` to get the latest changes.
   - Start any new piece of work with `wt switch --create <branch_name>` — this creates the branch and its worktree together and cds into it. Use `-b <base>` to base it on something other than the default branch.
     - **Always base a new worktree on `origin/<default>`, not the local ref: `wt switch -c <branch> -b origin/main`.** `git fetch origin` updates `origin/main` but leaves local `main` wherever it was, and a bare `wt switch -c` branches from that stale local ref — which silently produces a branch N commits behind and a conflicted PR later. Fetch, then pass `-b origin/main`.
+    - **In opencode, immediately follow the worktree creation with the builtin `workspace` tool**, passing the new path (`~/worktrees/<repo>/<branch>`). `wt switch -c` only `cd`s its own subprocess, so without this the session keeps reading the old checkout — file browsing, `git status`, and the changed-files view all stay behind. The destination must already exist and be a checkout of the same repo, so create the worktree first. Claude Code has no equivalent; there, work in the worktree via absolute paths.
     - `wt switch <branch>` returns to an existing worktree; bare `wt switch` opens a picker
     - `wt list` shows every worktree and its status
     - `wt remove` deletes the worktree, and the branch if it has been merged
@@ -27,7 +28,7 @@
 - **Starting new work — always begin in a fresh worktree, before touching any file.** When I ask you to work on something new (an issue, a bug, a feature):
   1. Look into the issue first — read the relevant code/issue and determine whether a code change is actually required. If none is, say so and stop; don't create a branch.
   2. Determine a branch name per the naming rules below (prompt me for a ticket; fall back to `u/sloan/<feature>` if there isn't one).
-  3. **Immediately** run `wt switch -c <branch_name>` (`-c` is shorthand for `--create`) to create the branch + worktree, and do all the work there.
+  3. **Immediately** run `wt switch -c <branch_name>` (`-c` is shorthand for `--create`) to create the branch + worktree, and do all the work there. In opencode, call the `workspace` tool with the new path before step 4.
   4. Only then make the first Edit/Write. Never investigate-then-edit on `main`.
 - Use branch naming patterns that match a ticket name. For example:
   - ADA-123/updates-some-setting

@@ -249,6 +249,11 @@
   // Patterns and rationale documented in ~/.claude/skills/careful/SKILL.md.
   // Keep this list and careful.sh in sync.
   "permission": {
+    // Allows the builtin `workspace` tool to repoint this session at another
+    // checkout of the same repo — the only reliable way to follow a worktree
+    // created by `wt switch -c`, since a shell `cd` dies with its subprocess.
+    "workspace": "allow",
+
     "bash": {
       "*": "allow",
 
