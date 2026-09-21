@@ -18,3 +18,13 @@
 # belongs in a public repo, so the file stays machine-local. The plugin and the
 # commands symlink alongside it are still managed; only this one is excluded.
 .config/opencode/opencode.jsonc
+
+# Git LFS's own hooks, written into the global core.hooksPath by `git lfs
+# install` rather than by hand. exact_hooks would otherwise delete them on every
+# apply, which silently breaks LFS smudge and pre-push in every repo on the
+# machine. They're tool-generated state, not config, so they stay unmanaged —
+# listed here only so the exact_ directory leaves them alone.
+.config/git/hooks/post-checkout
+.config/git/hooks/post-commit
+.config/git/hooks/post-merge
+.config/git/hooks/pre-push
