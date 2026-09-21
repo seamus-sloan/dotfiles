@@ -96,6 +96,10 @@ gh pr create --repo <owner>/<repo> --base main --head <branch> --assignee @me --
 
 Get the branch from `git branch --show-current` and the repo slug from `gh repo view --json nameWithOwner --jq .nameWithOwner`.
 
+## 7. Draft PRs
+
+When the invoker asks for a draft (the `dev-loop` skill does by default), add `--draft` to `gh pr create`. Everything else — title, body, assignee, labels — is unchanged. `gh pr ready <pr>` flips it to ready for review later.
+
 ## End-to-end example
 
 ```bash
