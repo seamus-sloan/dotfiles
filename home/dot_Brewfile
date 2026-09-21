@@ -39,7 +39,6 @@ cask "android-platform-tools"
 # --- Apps ---
 cask "bruno"
 cask "codex"
-cask "codexbar"
 cask "font-hack-nerd-font"
 cask "headlamp"
 
