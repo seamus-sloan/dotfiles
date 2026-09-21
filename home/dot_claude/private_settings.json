@@ -1,11 +1,10 @@
 {
+  "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
       "Bash(gh pr merge:*)"
     ]
   },
-  "model": "opus",
-  "includeCoAuthoredBy": false,
   "hooks": {
     "PreToolUse": [
       {
@@ -97,7 +96,7 @@
       }
     }
   },
-  "effortLevel": "high",
+  "effortLevel": "xhigh",
   "modelSettings": {
     "claude-opus-5": {
       "effortLevel": "xhigh"

@@ -27,6 +27,23 @@ INPUT=$(cat)
 EVENT=$(jq -r '.hook_event_name // ""' <<<"$INPUT")
 SESSION=$(jq -r '.session_id // ""' <<<"$INPUT")
 CWD=$(jq -r '.cwd // ""' <<<"$INPUT")
+SOURCE=$(jq -r '.hook_source // ""' <<<"$INPUT")
+
+# opencode runs these hooks too, via oh-my-openagent's claude-code-hooks bridge,
+# which stamps every event it dispatches with hook_source "opencode-plugin".
+# Nothing below applies there, on both halves:
+#
+#   - The instruction is unactionable. set_session_title is a CCD-only MCP tool,
+#     so asking for it in opencode made the model open every session announcing a
+#     rename it had no lever to perform, then reach for this script as a fallback.
+#   - The rename is already handled. ~/.config/opencode/plugins/session-title.js
+#     appends the same repo-code.sh suffix to the title opencode's own title agent
+#     generates, deterministically, without involving the model at all.
+#
+# Claude Code sends no hook_source, so it falls straight through unchanged.
+if [ "$SOURCE" = "opencode-plugin" ]; then
+  exit 0
+fi
 
 STATE_DIR="$HOME/.claude/session-titles"
 STATE="$STATE_DIR/$SESSION"

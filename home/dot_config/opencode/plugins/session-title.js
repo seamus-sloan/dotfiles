@@ -1,3 +1,5 @@
+import { execFile } from "node:child_process"
+
 /**
  * session-title.js — the opencode half of the session-title convention.
  *
@@ -22,7 +24,7 @@
  *
  * @type {import("@opencode-ai/plugin").Plugin}
  */
-export const SessionTitle = async ({ client, $, directory, worktree }) => {
+export const SessionTitle = async ({ client, directory, worktree }) => {
   const PR_URL = /https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/pull\/(\d+)/
   const PR_PREFIX = /^#\d+\s+/
 
@@ -33,20 +35,31 @@ export const SessionTitle = async ({ client, $, directory, worktree }) => {
   const PLACEHOLDER = /^New session - \d{4}-\d{2}-\d{2}T[\d:.]+Z$/
 
   // Resolved once per plugin instance: a plugin is loaded per directory, and the
-  // repo a directory belongs to does not change under us. Bun's $ expands
-  // neither `~` nor `$HOME`, so the script path is built here and interpolated
-  // as a single word.
+  // repo a directory belongs to does not change under us. The path is built here
+  // rather than relying on shell expansion, and passed as a single argv entry, so
+  // neither `~` nor a space in the path needs quoting.
+  //
+  // Deliberately node:child_process and not the plugin's `$`: opencode only
+  // supplies `$` when it is running under Bun (`$: typeof Bun === "undefined" ?
+  // undefined : Bun.$`), and the desktop app runs its server inside Electron's
+  // Node runtime, where `$` is therefore undefined and calling it threw
+  // "$ is not a function" on every session.updated.
   const script = `${process.env.HOME}/.claude/hooks/repo-code.sh`
   let codePromise
 
   /** Short project code for this worktree, or "" when it isn't in a git repo. */
   const repoCode = () => {
-    codePromise ??= $`${script} ${worktree ?? directory}`
-      .quiet()
-      .nothrow()
-      .text()
-      .then((out) => out.trim())
-      .catch(() => "")
+    codePromise ??= new Promise((resolve, reject) => {
+      execFile(script, [worktree ?? directory], { encoding: "utf8" }, (error, stdout) =>
+        error ? reject(error) : resolve(stdout.trim()),
+      )
+    }).catch(() => {
+      // Clear the cache on failure. A rejected promise left in `codePromise` is
+      // re-awaited by every subsequent session.updated, which is what turned one
+      // missing-script error into a flood of unhandled rejections.
+      codePromise = undefined
+      return ""
+    })
     return codePromise
   }
 

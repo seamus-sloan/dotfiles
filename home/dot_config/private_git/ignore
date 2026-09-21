@@ -1,5 +1,7 @@
 **/.claude/settings.local.json
 
+**/.omo
+
 # Per-repo worktrunk include list, selecting which gitignored files
 # `wt step copy-ignored` carries into a new worktree. Local to this machine —
 # the set of secrets worth copying is personal, not something a repo should
