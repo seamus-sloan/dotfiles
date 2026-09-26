@@ -91,7 +91,6 @@ _fresh_prune_integrated() {
 #
 # Defined as a function rather than an alias so it can take an argument and so
 # it calls worktrunk's `wt` shell function (which is what makes `switch` cd).
-unalias fresh 2>/dev/null   # drop the older jj-era alias if a stale ~/.zshrc still defines it
 fresh() {
     # `^` is worktrunk's shortcut for the repo's default branch.
     local branch="${1:-^}"

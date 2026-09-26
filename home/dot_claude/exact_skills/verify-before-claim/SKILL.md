@@ -90,7 +90,7 @@ If you catch yourself doing any of these, run the gate before continuing:
 - ❌ "Linter passed." (linter doesn't compile)
 
 **Subagent delegation:**
-- ✅ Subagent reports done → check `jj diff` → confirm changes match the request → "Subagent's changes verified at <revid>."
+- ✅ Subagent reports done → check `git show <sha>` → confirm changes match the request → "Subagent's changes verified at <sha>."
 - ❌ Trust subagent report.
 
 **Requirements (multi-step plan):**

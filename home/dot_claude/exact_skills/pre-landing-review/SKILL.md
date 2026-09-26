@@ -5,7 +5,7 @@ description: Self-review the current branch's diff before pushing. Two-pass seve
 
 # Pre-landing review
 
-Run on `jj diff -r 'main..@'` (or `git diff origin/main` for git repos). Two passes — critical first, informational second. Auto-fix the mechanical stuff; batch ambiguous items into a single user question.
+Run on `git diff --merge-base origin/main`. Two passes — critical first, informational second. Auto-fix the mechanical stuff; batch ambiguous items into a single user question.
 
 ## Output format
 

@@ -15,7 +15,7 @@ Apply mechanically. The point is to stop fixing symptoms.
 
 | Phase | Goal | Output |
 |---|---|---|
-| 1. Investigate | Collect symptoms, trace code paths, check recent changes (`jj log -r 'main..@'`), reproduce deterministically | A specific, testable hypothesis |
+| 1. Investigate | Collect symptoms, trace code paths, check recent changes (`git log origin/main..HEAD`), reproduce deterministically | A specific, testable hypothesis |
 | 2. Pattern match | Recognize common signatures: race conditions, nil propagation, state corruption, stale caches, config drift, integration failures | Refined hypothesis or candidate list |
 | 3. Test | Confirm with temporary logging or assertions. If wrong, gather more evidence — do **not** guess | Confirmed root cause |
 | 4. Fix | Patch the root cause. Write a regression test that fails without the fix and passes with it. Run the full suite | Verified fix + test |

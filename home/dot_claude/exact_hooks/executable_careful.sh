@@ -20,7 +20,7 @@ if echo "$COMMAND" | grep -qE "$SAFE"; then
 fi
 
 # DESTRUCTIVE patterns that need confirmation.
-DESTRUCTIVE='(\brm -rf?\b|\brm --recursive\b|DROP[[:space:]]+(TABLE|DATABASE|SCHEMA)\b|TRUNCATE[[:space:]]+TABLE\b|git[[:space:]]+push[[:space:]]+(-f\b|--force\b)|git[[:space:]]+reset[[:space:]]+--hard\b|git[[:space:]]+(checkout|restore)[[:space:]]+\.|kubectl[[:space:]]+delete\b|docker[[:space:]]+(rm[[:space:]]+-f\b|system[[:space:]]+prune\b)|jj[[:space:]]+(abandon\b|op[[:space:]]+restore\b))'
+DESTRUCTIVE='(\brm -rf?\b|\brm --recursive\b|DROP[[:space:]]+(TABLE|DATABASE|SCHEMA)\b|TRUNCATE[[:space:]]+TABLE\b|git[[:space:]]+push[[:space:]]+(-f\b|--force\b)|git[[:space:]]+reset[[:space:]]+--hard\b|git[[:space:]]+(checkout|restore)[[:space:]]+\.|kubectl[[:space:]]+delete\b|docker[[:space:]]+(rm[[:space:]]+-f\b|system[[:space:]]+prune\b))'
 
 if echo "$COMMAND" | grep -qiE "$DESTRUCTIVE"; then
   REASON=$(echo "$COMMAND" | grep -oiE "$DESTRUCTIVE" | head -1)
