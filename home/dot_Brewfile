@@ -40,7 +40,6 @@ cask "android-platform-tools"
 cask "bruno"
 cask "codex"
 cask "font-hack-nerd-font"
-cask "headlamp"
 
 # --- Rust tools ---
 cargo "cargo-binstall"
@@ -52,7 +51,5 @@ cargo "workz"
 cargo "zellij"
 
 # --- Node tools ---
-npm "clawhub"
 npm "corepack"
 npm "markdownlint-cli"
-npm "openclaw"
