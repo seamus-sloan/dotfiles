@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Test-driven development discipline. Iron Law - no production code without a failing test first. Red-Green-Refactor cycle with mandatory verify-red step. Triggers when the user asks to "use TDD", "write the test first", "TDD this feature", "test-drive this", or starts implementation work where TDD applies.
+description: Test-driven development discipline. Iron Law - no production code without a failing test first. Red-Green-Refactor cycle with mandatory verify-red step, one vertical slice at a time, tests only at agreed seams. Triggers when the user asks to "use TDD", "write the test first", "TDD this feature", "test-drive this", mentions "red-green-refactor", or starts implementation work where TDD applies.
 ---
 
 # tdd
@@ -26,6 +26,15 @@ Violating the letter of this rule is violating the spirit.
 
 "Skip TDD just this once" → that's the rationalization. Stop.
 
+## Agree the seams first
+
+A **seam** is the public interface a test goes through: where you observe behaviour without reaching inside. Tests live at seams, never against internals. You can't test everything, so agreeing the seams up front is how testing effort lands on the critical paths and complex logic instead of every edge case.
+
+Before writing any test, write down the seams under test:
+
+- **Run directly** (`/tdd`, or TDD in the main session): confirm them with the user. Ask: "What's the public interface, and which seams should we test?" No test is written at an unconfirmed seam.
+- **Run under a plan** (the `dev-loop` implementer, a `writing-plans` task): the seams the plan lists count as agreed. If the plan lists none for a task, return `NEEDS_CONTEXT` rather than picking your own.
+
 ## Red → Green → Refactor
 
 ```
@@ -38,7 +47,7 @@ RED  ──▶ verify-red ──▶ GREEN ──▶ verify-green ──▶ REFAC
 
 ### 1. RED — write the test
 
-One behavior. Clear name. Real code, not mocks.
+One behavior, at an agreed seam. Clear name. Real code, not mocks (see [mocking.md](mocking.md) for the boundaries where a mock is right).
 
 ```rust
 // Good — tests behavior, has a clear name
@@ -85,6 +94,8 @@ If a refactor breaks the test, your refactor is wrong (or the test was tied to i
 
 Pick the next behavior. Back to RED.
 
+Work in **vertical slices**: one test → one implementation → repeat, each test a **tracer bullet** that responds to what the last cycle taught you. Never write all the tests first (see horizontal slicing, below).
+
 ## Bug-fix variant — Red-Green for regression
 
 For a bug:
@@ -96,6 +107,29 @@ For a bug:
 6. Re-apply the fix. Confirm pass.
 
 If step 5 doesn't fail, the test isn't really catching the bug. Tighten it.
+
+## Anti-patterns
+
+- **Implementation-coupled**: mocks internal collaborators, tests private functions, or verifies through a side channel (querying the database instead of using the interface). The tell: the test breaks when you refactor but behavior hasn't changed.
+- **Tautological**: the assertion recomputes the expected value the way the code does, so it passes by construction and can never disagree with the code. Expected values come from an independent source of truth: a known-good literal, a worked example, the spec.
+
+  ```rust
+  // Bad — recomputes the expected value the same way the code does
+  #[test]
+  fn total_sums_line_items() {
+      let items = vec![Item { price: 10 }, Item { price: 5 }];
+      let expected: u32 = items.iter().map(|i| i.price).sum();
+      assert_eq!(total(&items), expected);
+  }
+
+  // Good — expected value is an independent, known literal
+  #[test]
+  fn total_sums_line_items() {
+      assert_eq!(total(&[Item { price: 10 }, Item { price: 5 }]), 15);
+  }
+  ```
+
+- **Horizontal slicing**: writing all the tests first, then all the implementation. Bulk tests verify _imagined_ behavior: they test the _shape_ of things rather than what callers see, go insensitive to real changes, and lock in test structure before you understand the implementation. One slice at a time instead.
 
 ## Common rationalizations — reject these
 
@@ -115,4 +149,11 @@ If step 5 doesn't fail, the test isn't really catching the bug. Tighten it.
 - **Never** make a test pass by weakening the assertion. Tighten the code, not the test.
 - **Never** declare a bug fix complete without the revert-and-fail-again step (regression proof).
 - **Never** combine multiple behaviors in one test. One test, one behavior.
-- **Never** mock what you're testing. Mock the boundary, not the unit.
+- **Never** mock what you're testing. Mock the boundary, not the unit ([mocking.md](mocking.md)).
+- **Never** write a test at a seam nobody agreed on.
+- **Never** compute a test's expected value the way the code computes it.
+- **Never** write a batch of tests ahead of the code. One slice at a time.
+
+---
+
+Seams, anti-patterns, vertical slicing and [mocking.md](mocking.md) adapted from `tdd` in [mattpocock/skills](https://github.com/mattpocock/skills), Copyright (c) 2026 Matt Pocock, MIT License.
