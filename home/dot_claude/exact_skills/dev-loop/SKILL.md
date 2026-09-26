@@ -69,12 +69,12 @@ Issue/spec: <#n title | first line of the spec>
 
 ## 3. Plan
 
-Dispatch a fresh `general-purpose` subagent on Opus: "Apply `~/.claude/skills/writing-plans/SKILL.md` to the spec below. Write the plan to `<SCRATCH>/dev-loop/<branch>/plan.md` — **not** the skill's default `docs/plans/` location. Return the header, the file-structure pass, the task titles, and any open questions." Include the issue body or spec and the run context block.
+Dispatch a fresh `general-purpose` subagent on Opus: "Apply `~/.claude/skills/writing-plans/SKILL.md` to the spec below. Write the plan to `<SCRATCH>/dev-loop/<branch>/plan.md`. Return the file map, the task titles with their seams, and any open questions." Include the issue body or spec and the run context block.
 
 Then:
 
 - Read the plan once. Answer its open questions yourself from the issue, the repo, and the instruction files where you can; batch the remainder into **one** `AskUserQuestion`. Append the answers to the plan file.
-- If the file-structure pass exceeds the global stacking thresholds (over 500 lines or 20 files), stop and ask the user to split the spec. v1 does not auto-stack.
+- If the file map exceeds the global stacking thresholds (over 500 lines or 20 files), stop and ask the user to split the spec. v1 does not auto-stack.
 
 ## 4. Implement
 

@@ -91,18 +91,19 @@ Each subagent gets a self-contained prompt. They have no memory of your session.
 You are implementing task <N> of <plan-path>.
 
 Task spec (verbatim from plan):
-<full task text including all checkbox steps and code blocks>
+<full task text: files, seams, acceptance criteria, verify command, decisions, commit line>
 
 Repo context:
 - Working dir: <path>
-- VCS: git (`git add .` + `git commit -m "<message>"` per step; never amend or rebase)
+- VCS: git (`git add .` + `git commit -m "<the task's Commit line>"`; never amend or rebase)
 - Test command: <command from CLAUDE.md>
 - Lint: <command>
 
 Constraints:
-- Follow each checkbox step exactly. Don't skip the verify-red / verify-green steps.
-- Commit after each task per the plan's convention.
-- Apply tdd skill: red → verify red → green → verify green → commit.
+- Test only at the task's listed seams — they count as agreed for tdd.
+- Apply tdd skill: red → verify red → green → verify green → commit. Never skip verify-red.
+- Run the task's Verify command before committing; meet every acceptance criterion.
+- Don't re-decide anything under Decisions.
 - If unsure about anything, return NEEDS_CONTEXT — don't guess.
 
 Return one of: DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED.
@@ -119,10 +120,10 @@ Implementer's commit: <sha>
 Diff: <git show <sha>>
 
 Check:
-1. Every checkbox step in the spec → was it executed and verifiable in the diff?
-2. Test from RED step → present and asserts the right behavior?
-3. Code from GREEN step → matches what the spec said to write?
-4. Commit message → matches the spec's commit message?
+1. Every acceptance criterion → met, and verifiable in the diff?
+2. Tests → present at the task's seams, and asserting the criteria?
+3. Decisions the task pins (types, schemas, signatures) → implemented as written?
+4. Commit message → matches the task's Commit line?
 
 Return APPROVE or REQUEST_CHANGES with a numbered list of gaps.
 Be terse. Don't comment on style — that's the next reviewer's job.
