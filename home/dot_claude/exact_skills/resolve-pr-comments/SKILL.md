@@ -1,6 +1,6 @@
 ---
 name: resolve-pr-comments
-description: Triage and act on every reviewer comment on a GitHub PR — fix small nits and critical issues directly (then reply + resolve the thread), and surface deferral or pushback decisions back to the user without responding in the thread. Triggers when the user asks to "resolve PR comments", "address review feedback", "go through PR comments", "respond to reviewers", or similar.
+description: Triage and act on every reviewer comment on a GitHub PR — fix small nits and critical issues directly (reply with just the commit SHA, then resolve the thread), dismiss bot comments you defer or push back on with a few-word reply, and bring deferrals or push-backs on human comments to the user before replying. Triggers when the user asks to "resolve PR comments", "address review feedback", "go through PR comments", "respond to reviewers", or similar.
 ---
 
 # Resolve PR comments
@@ -14,11 +14,11 @@ PRs have three comment surfaces; you must read all of them. Resolve `<owner>/<re
 ```bash
 # Top-level PR conversation (issue comments)
 gh api -X GET "repos/<owner>/<repo>/issues/<pr>/comments" --paginate \
-  --jq '.[] | {id, user: .user.login, body, created_at}'
+  --jq '.[] | {id, user: .user.login, user_type: .user.type, body, created_at}'
 
 # Inline review comments (the diff-anchored ones, including bots like Copilot)
 gh api -X GET "repos/<owner>/<repo>/pulls/<pr>/comments" --paginate \
-  --jq '.[] | {id, in_reply_to: .in_reply_to_id, user: .user.login, path, line, body, created_at}'
+  --jq '.[] | {id, in_reply_to: .in_reply_to_id, user: .user.login, user_type: .user.type, path, line, body, created_at}'
 
 # Review summaries (the "Approve / Request changes / Comment" envelopes)
 gh api -X GET "repos/<owner>/<repo>/pulls/<pr>/reviews" --paginate \
@@ -46,6 +46,8 @@ gh api graphql -f query='
 ```
 
 Build a working list of every **unresolved** thread + every standalone issue comment that hasn't been answered. Skip threads where `isResolved=true` already.
+
+Tag each item's author as a **bot** or a **person**. A bot has `user.type == "Bot"`, a login ending in `[bot]`, or is Copilot; everyone else is a person. The tag decides who owns a deferral or push-back (§3b).
 
 ## 2. Triage each comment as a principal engineer
 
@@ -79,17 +81,17 @@ If a plain `git push` is ever rejected as non-fast-forward, stop — you almost 
 1. Make the code change. Keep it surgical — don't sneak unrelated cleanups into a review-driven commit.
 2. Run the relevant tests / lint for the touched files (`cargo test -p <crate>`, `cargo clippy`, `cargo fmt`, `npx playwright test <spec>`, etc. — whatever the repo's `CLAUDE.md` prescribes).
 3. Commit + push the fix: `git add -u` → `git commit -m "fix: …"` → `git push`. The push must be a fast-forward — if git rejects it as non-fast-forward, step 0 was skipped.
-4. **Reply to the comment thread** with a short note explaining what changed. Reference the new commit SHA when useful.
+4. **Reply with the commit SHA and nothing else** — no "Fixed", no summary. GitHub renders a pushed commit's SHA as a link to it, so the fix must be pushed first (step 3). Use the full SHA of the commit that fixed *this* comment; if it took several, list them space-separated.
 
    ```bash
    # Reply inline to a review-comment thread (use the head comment's REST id)
    gh api -X POST "repos/<owner>/<repo>/pulls/<pr>/comments" \
-     -f body="Fixed in <sha> — <one-line summary>." \
+     -f body="<sha>" \
      -F in_reply_to=<head_comment_id>
 
    # Reply to a top-level issue comment (no threading; just post a new comment)
    gh api -X POST "repos/<owner>/<repo>/issues/<pr>/comments" \
-     -f body="Addressed in <sha> — <one-line summary>."
+     -f body="<sha>"
    ```
 
 5. **Resolve the review thread** (issue comments don't have a resolve concept; the reply is enough):
@@ -100,27 +102,19 @@ If a plain `git push` is ever rejected as non-fast-forward, stop — you almost 
    ' -F id=<thread_id>
    ```
 
-Reply tone: terse, factual, no apologies, no filler. "Fixed — switched to `Result<…, anyhow::Error>` per `02-error-handling`." not "Great catch! I really appreciate the feedback…".
+## 3b. Defer and push-back flow
 
-## 3b. Defer flow
+A deferral or push-back is dismissed with a reply of **as few words as it needs** — the reason, and a link if one exists — then the thread is resolved. No greeting, no apology, no restating the comment:
 
-Do **not** reply on the PR. Do **not** resolve the thread. Surface it back to the user with:
+- Defer: `Out of scope; tracked in #412.` / `Follow-up PR.`
+- Push back: `Intended: callers already validate.` / `Covered by db/src/auth.rs:88.`
 
-- The reviewer's name and a one-line quote of the comment.
-- Why you classified it as defer (scope, dependency, design discussion, data needed).
-- A concrete proposal: open a follow-up issue, file a TODO, add to a roadmap doc, or punt to the next PR — and ask which.
+Who decides depends on the author (§1):
 
-The user makes the call on whether to defer, fix anyway, or push back. They will write the reply themselves if one is needed.
+- **Bot** → decide it yourself: post the reply and resolve the thread (same mutation as §3a step 5). No check-in.
+- **Person** → do **not** reply or resolve yet. Bring it to the user with the reviewer's name, a one-line quote, why it's a defer or push-back (cite the file, function, or rule), and the exact reply you'd post. Once the user approves — or edits the wording — post it and resolve the thread. Push-back on a person is a relationship signal; the user owns it.
 
-## 3c. Push-back flow
-
-Same as defer — no reply, no resolution. Surface back with:
-
-- The reviewer's name and a one-line quote.
-- Why you think the comment is mistaken or superfluous (cite the file, function, or rule that shows otherwise).
-- The exact wording you'd suggest the user reply with, so they can send it as-is or edit.
-
-Never argue with a reviewer on the user's behalf without explicit approval — pushback is a relationship signal and the user owns it.
+For a top-level issue comment there's no thread to resolve; the reply is enough.
 
 ## 4. Final report
 
@@ -131,21 +125,22 @@ Fixed (<n>):
   - <thread_id_short> <reviewer>: <one-liner>      [commit <sha>]
   - ...
 
-Deferred (<n>) — awaiting user decision:
-  - <thread_id_short> <reviewer>: <one-liner>      reason: <…>
+Dismissed — bot (<n>):
+  - <thread_id_short> <bot>: <one-liner>      replied: "<reply>"
 
-Push back (<n>) — awaiting user decision:
-  - <thread_id_short> <reviewer>: <one-liner>      reason: <…>
+Awaiting you — person (<n>):
+  - <thread_id_short> <reviewer>: <one-liner>      defer | push back — proposed reply: "<reply>"
 
 Already resolved / outdated: <n> (skipped)
 ```
 
-The user reads the summary and either approves the deferrals/pushbacks (you then post their replies) or course-corrects items into the fix-now bucket.
+The user approves or edits each proposed reply (you then post it and resolve the thread), or moves items into the fix-now bucket.
 
 ## Hard rules
 
-- **Never** reply to or resolve a comment you classified as defer or push back. The user owns those.
-- **Never** mark a thread resolved without an actual fix landing on the branch first. "Will fix later" is a defer, not a fix-now.
-- **Never** batch-resolve threads with a single boilerplate reply. Each fix gets its own targeted note.
+- **Never** reply to or resolve a person's comment you classified as defer or push back until the user approves the reply.
+- **Never** mark a thread resolved as fixed without the fix pushed to the branch first. "Will fix later" is a defer, not a fix-now.
+- **Never** pad a reply. A fix is the SHA alone; a dismissal is the fewest words that carry the reason.
+- **Never** batch-resolve threads with one shared reply. Each thread gets the SHA of its own fix, or its own dismissal.
 - **Never** invent a commit SHA in a reply — only reference SHAs that exist on the pushed branch.
 - **Never** force-push a PR branch to land review fixes. Fixes stack as new commits on top of the pushed tip (step 0 above) — never an amend, never a rebase. If `git push` is rejected as non-fast-forward, step 0 was skipped: recover with `git reset --soft origin/<branch>` and re-commit, rather than reaching for `--force`.

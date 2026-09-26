@@ -5,9 +5,9 @@ description: End-to-end PR pipeline — open the PR, wait for Copilot's review, 
 
 # Ship a PR (open → review → resolve → CI → merge)
 
-Orchestrates the whole path from an unopened change to a merged PR. This skill is a **conductor** — it delegates the real work to [`open-pr`](../open-pr/SKILL.md) and [`resolve-pr-comments`](../resolve-pr-comments/SKILL.md) and never re-implements their logic. Read both before running so their hard rules (never amend a pushed commit, never resolve a defer/push-back thread) carry through here.
+Orchestrates the whole path from an unopened change to a merged PR. This skill is a **conductor** — it delegates the real work to [`open-pr`](../open-pr/SKILL.md) and [`resolve-pr-comments`](../resolve-pr-comments/SKILL.md) and never re-implements their logic. Read both before running so their hard rules (never amend a pushed commit, never reply to a person's defer/push-back without the user's OK) carry through here.
 
-Default behaviour is **fully unattended**: open, resolve, and squash-merge with no check-ins. Stop early only when a step *needs a human* (deferrals / push-backs / a red check that isn't auto-recoverable) or when the user explicitly said not to merge.
+Default behaviour is **fully unattended**: open, resolve, and squash-merge with no check-ins. Stop early only when a step *needs a human* (a deferral or push-back on a person's comment / a red check that isn't auto-recoverable) or when the user explicitly said not to merge.
 
 ## 0. Read the invocation for overrides
 
@@ -53,12 +53,12 @@ Also read any inline comments it left (the review can be `COMMENTED`/`CHANGES_RE
 
 ## 3. Resolve every comment
 
-Invoke the **`resolve-pr-comments`** skill against the PR. It collects all three comment surfaces, triages each into fix-now / defer / push-back, applies + replies + resolves the fix-now items on a fresh stacked commit, and reports the rest.
+Invoke the **`resolve-pr-comments`** skill against the PR. It collects all three comment surfaces, triages each into fix-now / defer / push-back, fixes the fix-now items on a fresh stacked commit (replying with the SHA and resolving), dismisses deferrals and push-backs on bot comments, and reports the rest.
 
 Then branch on its outcome:
 
-- **All comments were fix-now (zero deferrals, zero push-backs):** the fixes pushed new commits. Proceed straight to step 4 — **Copilot reviews only once per PR and will not re-review the fix commits**, so there is no re-review loop to wait on.
-- **Any deferrals or push-backs exist:** these are the user's calls by definition (see `resolve-pr-comments` §3b/§3c). **Stop the pipeline and hand back** the skill's summary. Do **not** merge — even in auto-merge mode — because unresolved reviewer feedback is outstanding. The user decides; they may then tell you to merge anyway, defer them to a follow-up, or send a reply.
+- **Nothing awaits the user** (every comment fixed, or dismissed because it came from a bot): proceed straight to step 4 — **Copilot reviews only once per PR and will not re-review the fix commits**, so there is no re-review loop to wait on.
+- **A deferral or push-back on a person's comment awaits the user** (see `resolve-pr-comments` §3b): **stop the pipeline and hand back** the skill's summary. Do **not** merge — even in auto-merge mode — because a person's feedback is outstanding. The user approves the replies, moves items to fix-now, or tells you to merge anyway.
 
 Convergence guard: comment resolution is a single round (Copilot won't re-review), but if CI-driven fixes keep churning past ~3 rounds, stop and surface what's still failing rather than looping indefinitely.
 
@@ -76,7 +76,7 @@ gh pr checks <pr> --watch --fail-fast
 
 ## 5. Merge
 
-When CI is green **and** step 3 left no deferrals/push-backs **and** the user didn't say "don't merge":
+When CI is green **and** step 3 left nothing awaiting the user **and** the user didn't say "don't merge":
 
 ```bash
 gh pr merge <pr> --squash --delete-branch
@@ -100,7 +100,7 @@ gh issue view <n> --json state --jq .state   # want: CLOSED
 If it's still `OPEN` and the PR *fully* resolved it (the body was missing the keyword, or a bare `#<n>` was used), close it manually with a comment pointing at the merged PR:
 
 ```bash
-gh issue close <n> --comment "Shipped in #<pr> (merged to \`main\`). <one line on what landed>."
+gh issue close <n> --comment "Shipped in #<pr>."
 ```
 
 Leave it open only when the PR was a partial (`Part of #<n>`) — say so in the report.
@@ -112,7 +112,7 @@ Print a compact end-state summary: PR URL, merge status (merged / stopped-before
 ## Hard rules
 
 - **Never amend or force-push a pushed commit.** Every fix — review-driven or CI-driven — lands as a fresh commit on top. A `git push` rejected as non-fast-forward means this rule was broken; recover with `git reset --soft origin/<branch>` and redo. (Same invariant as `resolve-pr-comments` §0.)
-- **Never merge with an open deferral or push-back.** Those are the user's decisions; auto-merge is suspended until they're cleared.
+- **Never merge with a deferral or push-back on a person's comment awaiting the user.** Those are the user's decisions; auto-merge is suspended until they're cleared. Bot comments dismissed by `resolve-pr-comments` don't block.
 - **Never merge over a red or falsely-skipped required check.** A `SKIPPED` E2E check on a UI diff is a missing label, not a pass.
 - **Never request Copilot as a reviewer** — it's auto-attached.
 - **Never invent a review or CI state.** Poll the real API; if a signal never arrives within the timeout, say so and act on the documented fallback, don't assume.
