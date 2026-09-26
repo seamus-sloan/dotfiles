@@ -14,7 +14,7 @@ Pairs with [writing-plans](../writing-plans/SKILL.md) (which produces the plan) 
 | Condition | Use |
 |---|---|
 | Plan exists, tasks mostly independent, want to stay in this session | **subagent-pattern** (this skill) |
-| Plan exists, want a separate session per task (worktree-style) | [jj-workspaces](../jj-workspaces/SKILL.md) |
+| Plan exists, want a separate session per task (worktree-style) | One `wt switch -c <branch>` worktree per task, each in its own session |
 | No plan yet | [writing-plans](../writing-plans/SKILL.md) first |
 | Tasks tightly coupled, can't be parallelized | Manual execution by you |
 
@@ -52,7 +52,7 @@ read plan → TodoWrite all tasks
 final code review across whole implementation
    │
    ▼
-finishing the branch (jj-basics + open-pr)
+finishing the branch (git push + open-pr)
 ```
 
 ## Model selection
@@ -95,7 +95,7 @@ Task spec (verbatim from plan):
 
 Repo context:
 - Working dir: <path>
-- VCS: jj (use jj-basics skill — describe + bookmark move + commit per step)
+- VCS: git (`git add .` + `git commit -m "<message>"` per step; never amend or rebase)
 - Test command: <command from CLAUDE.md>
 - Lint: <command>
 
@@ -106,7 +106,7 @@ Constraints:
 - If unsure about anything, return NEEDS_CONTEXT — don't guess.
 
 Return one of: DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED.
-Include the change-id of your final commit.
+Include the SHA of your final commit.
 ```
 
 ### Spec-reviewer prompt skeleton
@@ -115,8 +115,8 @@ Include the change-id of your final commit.
 You are reviewing whether implementation matches spec.
 
 Plan task: <full task text>
-Implementer's commit: <change-id>
-Diff: <jj diff -r <change-id>>
+Implementer's commit: <sha>
+Diff: <git show <sha>>
 
 Check:
 1. Every checkbox step in the spec → was it executed and verifiable in the diff?
@@ -131,7 +131,7 @@ Be terse. Don't comment on style — that's the next reviewer's job.
 ### Code-quality reviewer prompt skeleton
 
 ```
-You are reviewing code quality of <change-id>.
+You are reviewing code quality of <sha>.
 
 Apply the pre-landing-review skill's CRITICAL pass on this diff:
 - SQL & data safety
@@ -149,7 +149,7 @@ Return APPROVE or REQUEST_CHANGES with file:line citations.
 
 Run a **final reviewer subagent** across the *entire* implementation (not per-task). Catches integration issues that per-task reviews miss — broken cross-references, dead code introduced halfway through, inconsistent patterns.
 
-Then hand off to [jj-basics](../jj-basics/SKILL.md) (push) and [open-pr](../open-pr/SKILL.md) (PR).
+Then push with `git push` and hand off to [open-pr](../open-pr/SKILL.md) (PR).
 
 ## Report back
 
@@ -159,14 +159,14 @@ After the loop completes, summarize:
 Subagent run: <N> tasks, <M> rounds of review
 Tasks: <N> DONE | <N> DONE_WITH_CONCERNS | <N> escalated
 Final reviewer findings: <count> | resolved: <count>
-Commits: <change-id-1>..<change-id-N>
+Commits: <sha-1>..<sha-N>
 ```
 
 ## Hard rules
 
 - **Never** let a subagent inherit your session history. Construct exactly what they need.
 - **Never** skip spec review to "save a step" — that's where most drift is caught.
-- **Never** trust a subagent's self-report. Verify via `jj diff` against `<change-id>`.
+- **Never** trust a subagent's self-report. Verify via `git show <sha>`.
 - **Never** retry a BLOCKED task on the same model with no input changes.
 - **Never** combine the two review stages. Spec compliance ≠ code quality. Different reviewers, different prompts.
 - **Never** skip the final-pass reviewer at the end. Per-task review misses cross-task issues.
