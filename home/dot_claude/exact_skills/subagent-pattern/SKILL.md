@@ -128,22 +128,9 @@ Return APPROVE or REQUEST_CHANGES with a numbered list of gaps.
 Be terse. Don't comment on style — that's the next reviewer's job.
 ```
 
-### Code-quality reviewer prompt skeleton
+### Code-quality reviewer
 
-```
-You are reviewing code quality of <sha>.
-
-Apply the pre-landing-review skill's CRITICAL pass on this diff:
-- SQL & data safety
-- Race conditions
-- LLM output trust boundary
-- Shell injection
-- Enum completeness
-
-Plus the suppression list — do NOT flag stylistic noise.
-
-Return APPROVE or REQUEST_CHANGES with file:line citations.
-```
+Dispatch the `review-neutral` agent (`subagent_type: review-neutral`) on the task's commit: save `git show <sha>` to the scratchpad as the diff file and build its context block per [pr-review](../pr-review/SKILL.md) §3, with the plan task as the spec. Verify and rule on its findings as `pr-review` §6–§7 does. Any CONFIRMED CRITICAL or MAJOR row → REQUEST_CHANGES; otherwise APPROVE.
 
 ## After all tasks pass
 

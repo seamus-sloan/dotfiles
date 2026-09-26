@@ -101,8 +101,8 @@ If you catch yourself doing any of these, run the gate before continuing:
 
 - After `tdd` → verify the green run before declaring the test passes.
 - After `investigate` → verify the regression test fails-without-fix and passes-with-fix.
-- After `pre-landing-review` → verify each AUTO-FIX actually applied before the report.
-- Before `open-pr` → verify the test suite passes on `@`.
+- After `pr-review` → every CONFIRMED row rests on evidence produced in the same message, never on the reviewer's word.
+- Before `open-pr` → verify the test suite passes on the branch's `HEAD`.
 
 ## Hard rules
 

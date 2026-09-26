@@ -15,11 +15,11 @@ Three review skills overlap. Choose deliberately:
 
 | Skill | Who reviews | Cost | Use when |
 |---|---|---|---|
-| `pre-landing-review` | You, on your own diff | 1 agent (you) | Routine pre-push hygiene check |
+| `pr-review` | Claude reviewer agents (`neutral` by default; `prosecutor` + `defender` on request), every finding verified by you | 1–2 subagents | Routine review of your branch or a PR |
 | **`delegated-review`** (this) | One GPT-5.6 subagent | 1 subagent | You want an independent model's read before shipping |
 | `review-work` | 5 parallel agents (goal/QA/code/security/context) | 5 subagents | High-stakes work, PR handoff, or a security-sensitive change |
 
-If the user just said "review my branch" with no hint of independence, that is `pre-landing-review`. This skill is for when they want *someone else* to look.
+If the user just said "review my branch" with no hint of independence, that is `pr-review`. This skill is for when they want a *different model family* to look.
 
 ---
 
