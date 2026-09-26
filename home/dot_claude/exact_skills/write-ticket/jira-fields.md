@@ -7,17 +7,18 @@ commonly assigns, useful as a first guess only.
 
 **cloudId:** always resolve with `getAccessibleAtlassianResources`. Never hardcode.
 
-## The five intake fields
+## Where each field goes
 
 | Field | Field key | Where it goes on `createJiraIssue` | Value shape |
 |-------|-----------|-----------------------------------|-------------|
+| Space | project key | top-level `projectKey` param | `"PROJ"` |
 | Epic | `parent` (Jira mirrors it to the legacy "Epic Link" custom field) | top-level `parent` param | `"PROJ-201"` |
+| Issue type | `issuetype` | top-level `issueTypeName` param | `"Story"` |
+| Priority | `priority` | `additional_fields` | `{"name": "Medium"}` |
 | Story Points | custom field — discover | `additional_fields` | number: `3` |
 | Sprint | custom field — discover | `additional_fields` | sprint **id** as a number |
 | Assignee | `assignee` | top-level `assignee_account_id` param | account id string |
 | Labels | `labels` | `additional_fields` | `["tech-debt", "e2e"]` |
-
-Plus the house default: `additional_fields: {"priority": {"name": "Medium"}}`.
 
 ## Discovering the custom field IDs
 
@@ -39,7 +40,7 @@ Labels to look for:
 - **"Sprint"** — commonly `customfield_10020`.
 
 A site usually has *both* story-point fields defined, with only one populated. Don't
-guess: in Step 3 you already fetched siblings — use whichever is non-null on them. If both
+guess: you already fetched the epic's children (jira.md, Fetch first) — use whichever is non-null on them. If both
 are null across every sibling (a project that genuinely doesn't estimate), still ask the
 user for a value, set the classic "Story Points" field, and note in the report that
 siblings carry no points.
