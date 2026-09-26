@@ -17,7 +17,7 @@ Two buckets:
 
 | Bucket | How to tell | What to do |
 |---|---|---|
-| **Pre-existing** | Same test also fails on the base branch | Don't block. Note in PR body. |
+| **Pre-existing** | Same test also fails on the base branch | Don't block. Report it to the user. |
 | **In-branch** | Passes on base, fails on this branch | Block. Investigate before pushing. |
 
 To check, run the same test against the base branch. Under worktrunk the base branch already has its own worktree, so there is nothing to stash — switch, run, switch back:
@@ -48,12 +48,10 @@ Once fixed:
 
 ## 3b. Pre-existing failure flow
 
-Don't fix opportunistically — that's scope creep. Two options:
+Don't fix opportunistically — that's scope creep. Instead:
 
-1. **Note in PR body** — add a "Pre-existing failures" section listing each test name + a one-line note ("fails on main, tracked in #123 / not yet tracked"). Reviewers know not to blame your branch.
-2. **File a separate ticket** if the failure isn't already tracked, and reference it in the PR body.
-
-Use [open-pr](../open-pr/SKILL.md) for the PR body convention.
+1. **Report it to the user** — each test name plus a one-line note ("fails on main, tracked in #123 / not yet tracked"). It never goes into the PR description.
+2. **Offer a ticket** when the failure isn't already tracked, via [write-ticket](../write-ticket/SKILL.md).
 
 ## 4. Regression-test mandate
 
@@ -75,7 +73,7 @@ Test failure triage: N failures (P pre-existing, B in-branch)
 In-branch (BLOCKING):
   - <test name> (<file>): <one-line cause if known>
 
-Pre-existing (note in PR body):
+Pre-existing (reported, not blocking):
   - <test name> (<file>): also fails on main [<ticket-ref or "untracked">]
 ```
 

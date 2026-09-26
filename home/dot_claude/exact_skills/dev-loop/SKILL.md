@@ -94,7 +94,7 @@ Never trust the self-report. On `DONE`: `git -C <WORKTREE> status --porcelain` m
 Let `r = 1`, `cap` from §0 (default 2). Each round:
 
 1. **Snapshot.** Refuse to start on a dirty tree. `git -C <WORKTREE> diff origin/main...HEAD > <SCRATCH>/dev-loop/<branch>/round-<r>.patch`; keep `--stat` for the report. Every reviewer reads this one file, so they see an identical diff.
-2. **Review with `pr-review`.** Invoke the [`pr-review`](../pr-review/SKILL.md) skill on round 1 and run its §4–§8 every round, passing: reviewers `prosecutor defender` (or `neutral` with `review=neutral`, or the one left by `skip=`), the run context block, the patch path, the plan path, `Round: <r>`, and from round 2 the prior verdict table. It dispatches the reviewers, verifies every row, rules on each, and returns the verdict table. Its rulings carry into the PR body: judgment calls with their rationale, so the user can overrule at review; DEFERRED_TO_USER items, which never block the loop but block a `merge` run exactly like a `ship-pr` deferral.
+2. **Review with `pr-review`.** Invoke the [`pr-review`](../pr-review/SKILL.md) skill on round 1 and run its §4–§8 every round, passing: reviewers `prosecutor defender` (or `neutral` with `review=neutral`, or the one left by `skip=`), the run context block, the patch path, the plan path, `Round: <r>`, and from round 2 the prior verdict table. It dispatches the reviewers, verifies every row, rules on each, and returns the verdict table. Its rulings go to the user in the final report (§8), never into the PR: judgment calls with their rationale, so the user can overrule them; DEFERRED_TO_USER items, which never block the loop but block a `merge` run exactly like a `ship-pr` deferral.
 3. **Severity gate.** CRITICAL and MAJOR CONFIRMED items always enter the brief. MINOR and excess (defender, or neutral `Kind: excess`) items enter only if the fix is under ~5 lines; otherwise they are reported, not fixed.
 4. **Exit check.** Empty brief → loop done, go to §6. `r == cap` with a non-empty brief → do not fix; go to §6 with the brief listed as unresolved, and open no PR unless the user overrode (`ready` / `merge` still stop here and hand back). Convergence guard: a row CONFIRMED in two consecutive rounds after a fix attempt → the next implementer dispatch runs on Opus (`model: "opus"`); still unresolved at the cap → `BLOCKED`, hand back.
 5. **Fix brief.** One block per CONFIRMED item that passed the gate: ID, location, what to change (the finding's suggested fix or simpler alternative), and the verify command that must pass afterwards. Append: "Do not touch DISMISSED, JUDGMENT-kept, or DEFERRED items: <ids>. Commit as `fix:` on top. Never amend."
@@ -107,14 +107,14 @@ Print `pr-review`'s verdict table after each round.
 
 Run `TEST_CMD` and `LINT_CMD` in full, fresh, in this message. Red → `test-failure-triage`:
 
-- pre-existing (also fails on `origin/main`) → note for the PR body;
+- pre-existing (also fails on `origin/main`) → note for the final report;
 - in-branch → one more implementer dispatch in `Mode: fix` with the failing output (separate cap of 2, not a review round), then re-run both commands.
 
 Mechanical lint fixes (`cargo fmt`, `biome format`) also go through the implementer. The orchestrator never edits the worktree, even for that.
 
 ## 7. Ship
 
-- **Default:** invoke `open-pr` and tell it to open as a **draft**. The PR body gets a "dev-loop" section — bullets only, per the global PR rule: rounds run, counts of confirmed / dismissed / judgment / deferred findings, judgment calls with their one-line rationale, deferred items, pre-existing failures, and a one-paragraph plan summary. No Claude attribution anywhere.
+- **Default:** invoke `open-pr` and tell it to open as a **draft**. The body is `open-pr`'s terse template fill and nothing else: review rounds, findings, judgment calls, deferred items, and pre-existing failures all go to the user in §8, never into the PR. No Claude attribution anywhere.
 - `ready` → the same, non-draft.
 - `merge` → invoke `ship-pr` (non-draft). If any DEFERRED_TO_USER item exists, tell `ship-pr` "stop before merge".
 - `no-pr` → end here; push nothing.
