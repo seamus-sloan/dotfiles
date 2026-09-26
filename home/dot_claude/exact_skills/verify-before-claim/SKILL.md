@@ -103,7 +103,6 @@ If you catch yourself doing any of these, run the gate before continuing:
 - After `investigate` → verify the regression test fails-without-fix and passes-with-fix.
 - After `pre-landing-review` → verify each AUTO-FIX actually applied before the report.
 - Before `open-pr` → verify the test suite passes on `@`.
-- Before `phase-roadmap` → verify the per-initiative pages it claims to roll up actually exist.
 
 ## Hard rules
 

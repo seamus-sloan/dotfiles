@@ -7,8 +7,6 @@ description: Write an implementation plan as a checkbox of bite-sized 2-5 minute
 
 Produces an *implementation plan* — a sequence of bite-sized steps another agent (or you on a future day) can execute mechanically.
 
-Distinct from [plan-eng](../plan-eng/SKILL.md), which produces a *design doc* (data flow, storage shape, failure modes). Plan-eng is "what and why." This skill is "what to type, in what order, with what verification."
-
 Pairs with [subagent-pattern](../subagent-pattern/SKILL.md) (which executes these plans) and [tdd](../tdd/SKILL.md) (which dictates the per-task RED → GREEN → REFACTOR shape).
 
 ## File location
@@ -61,10 +59,6 @@ Every plan starts with this header — verbatim:
 **Architecture:** <2–3 sentences>
 
 **Tech stack:** <key technologies>
-
-**Design doc:** [<slug>](../design/<slug>.md) (if applicable)
-
-**Roadmap initiative:** [F<phase>.<n>](../roadmap/<phase>-<n>-<slug>.md) (if applicable)
 
 ---
 ```
