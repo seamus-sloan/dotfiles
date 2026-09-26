@@ -11,13 +11,12 @@ You own the triage. The reviewer advises; it does not get a veto.
 
 ## Pick the right skill
 
-Three review skills overlap. Choose deliberately:
+Two review skills overlap. Choose deliberately:
 
 | Skill | Who reviews | Cost | Use when |
 |---|---|---|---|
 | `pr-review` | Claude reviewer agents (`neutral` by default; `prosecutor` + `defender` on request), every finding verified by you | 1–2 subagents | Routine review of your branch or a PR |
 | **`delegated-review`** (this) | One GPT-5.6 subagent | 1 subagent | You want an independent model's read before shipping |
-| `review-work` | 5 parallel agents (goal/QA/code/security/context) | 5 subagents | High-stakes work, PR handoff, or a security-sensitive change |
 
 If the user just said "review my branch" with no hint of independence, that is `pr-review`. This skill is for when they want a *different model family* to look.
 
@@ -175,5 +174,5 @@ If nothing landed in NEEDS YOUR CALL, do not ask a question — just report and 
 - **Never let the reviewer write.** `write`/`edit` are disabled on the category by design. If a finding needs a fix, *you* apply it — you are the one who can verify it.
 - **Never accept a finding you have not verified against the code.** The reviewer's claim is a lead. Read the line before you change it.
 - **Never present the review verbatim as your answer.** Raw findings are the reviewer's output; triage is yours. Handing over an untriaged dump is the failure mode this skill exists to prevent.
-- **Never spawn more than one reviewer per pass.** Parallel reviewers on one diff is `review-work`, not this.
+- **Never spawn more than one reviewer per pass.** Parallel reviewers on one diff is `pr-review`, not this.
 - **Do not commit or push.** Report and stop unless the user asked for more.
