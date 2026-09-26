@@ -32,7 +32,7 @@ Invoke the **`open-pr`** skill. It picks the title, fills the body from the repo
   gh pr edit <pr> --add-label run_ui_tests
   ```
 - **Never request Copilot as a reviewer.** It's auto-attached by repo settings on this repo. No `--reviewer Copilot`, no `requested_reviewers` POST.
-- **Issue-closing keyword.** `open-pr` is responsible for putting a `Closes #<n>` (or `Fixes #<n>`) line in the body when the PR fully resolves a tracked issue — see its "Closing keyword" section. When ship-pr was invoked *for an issue* ("ship #1186", a pasted issue URL), confirm that line made it into the body before moving on; add it with `gh pr edit <pr> --body` if it's missing. Use `Part of #<n>` (no keyword) when the PR is only one sub-task of a larger issue, so the merge doesn't wrongly close the parent. This is what makes step 5's merge auto-close the issue.
+- **Issue-closing keyword.** `open-pr` is responsible for putting a `Closes #<n>` (or `Fixes #<n>`) line in the body when the PR fully resolves a tracked issue — see its "Closing keyword" section. When ship-pr was invoked *for an issue* ("ship #1186", a pasted issue URL), confirm that line made it into the body before moving on; if it's missing, add it with `gh pr edit <pr> --body-file`, running `open-pr`'s saved-copy check (§8) first. Use `Part of #<n>` (no keyword) when the PR is only one sub-task of a larger issue, so the merge doesn't wrongly close the parent. This is what makes step 5's merge auto-close the issue.
 
 ## 2. Wait for Copilot's review
 

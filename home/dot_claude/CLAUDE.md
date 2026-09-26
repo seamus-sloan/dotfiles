@@ -48,8 +48,11 @@
   - The branch that everything is based off of should be `-1`
   - The next branch and the branch after that would be `-2` and `-3` respectively
   - As branches are code complete, the branches should be pushed up and follow @skills/open-pr/SKILL.md
-- PR descriptions are **ALWAYS** a bullet point list — never prose paragraphs.
-  - **Never insert your own line breaks.** Write each bullet as one continuous line and let it soft-wrap. Hard-wrapping mid-sentence to hit some column width renders as ragged text in the GitHub UI.
-  - This applies to every section of the PR body, including template sections that look like they want prose.
+- PR descriptions follow the repo's PR template, filled with terse bullets — never prose paragraphs.
+  - Every bullet is **80 characters or less**, and no section has more than **4 bullets**. No sub-bullets, intro sentences, or bold lead-ins.
+  - This applies to every section, including template sections that look like they want prose.
+  - Nothing but the change and how to verify it: review rounds, finding tallies, test-run narration, and other process notes are reported to me in chat, never put in the PR.
+  - **Before rewriting an existing PR description, compare it with the copy saved when you last wrote it** (`open-pr` §8). If it changed or there's no copy, show me and ask before overwriting.
+- Replies to PR review comments are minimal: a fixed comment gets just the commit SHA, then the thread is resolved (see `resolve-pr-comments`).
 
 @RTK.md
