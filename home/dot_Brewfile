@@ -7,6 +7,7 @@
 tap "facebook/fb"
 
 # --- Core CLI ---
+brew "chafa"
 brew "chezmoi"
 brew "cmake"
 brew "direnv"

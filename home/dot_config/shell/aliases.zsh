@@ -5,6 +5,10 @@
 #
 #     [ -f "$HOME/.config/shell/aliases.zsh" ] && source "$HOME/.config/shell/aliases.zsh"
 
+# Binaries from `go install` land in the default GOPATH, the same path on every
+# machine, so this one PATH entry is shared rather than machine-local.
+export PATH="$HOME/go/bin:$PATH"
+
 # Flush the macOS DNS cache.
 alias flushdns='sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder'
 

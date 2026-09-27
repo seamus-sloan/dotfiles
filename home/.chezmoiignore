@@ -28,3 +28,8 @@
 .config/git/hooks/post-commit
 .config/git/hooks/post-merge
 .config/git/hooks/pre-push
+
+# The desktop app syncs skills into this folder on its own. exact_skills would
+# otherwise delete it on every apply, taking the synced skills with it. It's
+# app-managed state, not config, so it stays unmanaged.
+.claude/skills/synced
