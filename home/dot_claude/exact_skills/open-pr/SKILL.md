@@ -45,6 +45,7 @@ Keep titles under ~70 chars. Detail goes in the body, not the title. Conventiona
 
 - **Hard limits.** The diff is already in the PR; the body only gives its shape and how to verify it.
   - Every bullet is **80 characters or less** — one line, never wrapping.
+  - Never hard-wrap. Each sentence or paragraph sits on one line however long — including text kept from the template, whose line breaks get joined, not copied.
   - At most **4 bullets per section**.
   - No paragraphs, sub-bullets, intro sentences, or bold lead-ins.
   - Keep the template's headings and checkboxes; drop optional sections (`Notes`, `Screenshots`, …) with nothing new to say.
