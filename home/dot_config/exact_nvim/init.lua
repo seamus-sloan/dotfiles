@@ -861,9 +861,11 @@ do
   -- [[ Formatting ]]
   vim.pack.add { gh 'stevearc/conform.nvim' }
 
-  -- JS/TS: Biome when the project has a biome.json, otherwise Prettier. Both prefer the project's
+  -- JS/TS/CSS: Biome when the project has a biome.json, otherwise Prettier. Both prefer the project's
   --  own node_modules copy, and Prettier reads the project's .prettierrc (or falls back to its defaults).
   local web_formatters = { 'biome', 'prettierd', stop_after_first = true }
+  -- Biome's HTML, YAML and Markdown formatters are off by default, so those always go to Prettier.
+  local prettier_only = { 'prettierd' }
 
   require('conform').setup {
     notify_on_error = false,
@@ -876,6 +878,10 @@ do
         typescriptreact = true,
         json = true,
         jsonc = true,
+        css = true,
+        html = true,
+        yaml = true,
+        markdown = true,
         -- lua = true,
         -- python = true,
       }
@@ -898,6 +904,10 @@ do
       typescriptreact = web_formatters,
       json = web_formatters,
       jsonc = web_formatters,
+      css = web_formatters,
+      html = prettier_only,
+      yaml = prettier_only,
+      markdown = prettier_only,
       -- Conform can also run multiple formatters sequentially
       -- python = { "isort", "black" },
     },

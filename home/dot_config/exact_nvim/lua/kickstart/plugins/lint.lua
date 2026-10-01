@@ -3,9 +3,9 @@
 vim.pack.add { 'https://github.com/mfussenegger/nvim-lint' }
 
 local lint = require 'lint'
-lint.linters_by_ft = {
-  markdown = { 'markdownlint' }, -- Make sure to install `markdownlint` via mason / npm
-}
+-- Empty on purpose: markdownlint was too noisy (MD013/line-length on every long line), and an
+--  empty table also drops nvim-lint's built-in defaults (e.g. vale for markdown) listed below.
+lint.linters_by_ft = {}
 
 -- To allow other plugins to add linters to require('lint').linters_by_ft,
 -- instead set linters_by_ft like this:
