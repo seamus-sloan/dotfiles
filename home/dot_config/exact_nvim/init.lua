@@ -841,6 +841,8 @@ do
   vim.list_extend(ensure_installed, {
     -- You can add other tools here that you want Mason to install
     'goimports', -- Go formatting + import management (see conform below)
+    'prettierd', -- JS/TS formatting (see conform below)
+    'biome', -- JS/TS formatting in projects with a biome.json (see conform below)
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -858,11 +860,22 @@ end
 do
   -- [[ Formatting ]]
   vim.pack.add { gh 'stevearc/conform.nvim' }
+
+  -- JS/TS: Biome when the project has a biome.json, otherwise Prettier. Both prefer the project's
+  --  own node_modules copy, and Prettier reads the project's .prettierrc (or falls back to its defaults).
+  local web_formatters = { 'biome', 'prettierd', stop_after_first = true }
+
   require('conform').setup {
     notify_on_error = false,
     format_on_save = function(bufnr)
       -- You can specify filetypes to autoformat on save here:
       local enabled_filetypes = {
+        javascript = true,
+        javascriptreact = true,
+        typescript = true,
+        typescriptreact = true,
+        json = true,
+        jsonc = true,
         -- lua = true,
         -- python = true,
       }
@@ -879,11 +892,18 @@ do
     formatters_by_ft = {
       rust = { 'rustfmt' },
       go = { 'goimports' },
+      javascript = web_formatters,
+      javascriptreact = web_formatters,
+      typescript = web_formatters,
+      typescriptreact = web_formatters,
+      json = web_formatters,
+      jsonc = web_formatters,
       -- Conform can also run multiple formatters sequentially
       -- python = { "isort", "black" },
-      --
-      -- You can use 'stop_after_first' to run the first available formatter from the list
-      -- javascript = { "prettierd", "prettier", stop_after_first = true },
+    },
+    formatters = {
+      -- conform runs biome with editor defaults even without a biome.json; only use it in Biome projects
+      biome = { require_cwd = true },
     },
   }
 
