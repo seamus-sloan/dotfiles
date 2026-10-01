@@ -124,6 +124,13 @@ do
   --  See `:help 'clipboard'`
   vim.schedule(function() vim.o.clipboard = 'unnamedplus' end)
 
+  -- Indent with 2 spaces by default (guess-indent still adapts to a file's existing style)
+  --  See `:help 'expandtab'` and `:help 'shiftwidth'`
+  vim.o.expandtab = true
+  vim.o.tabstop = 2
+  vim.o.shiftwidth = 2
+  vim.o.softtabstop = 2
+
   -- Enable break indent
   vim.o.breakindent = true
 
