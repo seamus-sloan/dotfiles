@@ -9,8 +9,12 @@
 # machine, so this one PATH entry is shared rather than machine-local.
 export PATH="$HOME/go/bin:$PATH"
 
-# Flush the macOS DNS cache.
-alias flushdns='sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder'
+# Flush the DNS cache: macOS's resolver, or systemd-resolved on Linux.
+if [[ $OSTYPE == darwin* ]]; then
+    alias flushdns='sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder'
+else
+    alias flushdns='resolvectl flush-caches'
+fi
 
 # Shorthand for `wt switch`. Every argument carries through, so the full
 # vocabulary still works:

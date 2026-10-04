@@ -1,0 +1,36 @@
+{{ if and (eq .chezmoi.os "linux") (lookPath "pacman") -}}
+#!/bin/sh
+# Arch Linux (Omarchy) counterpart of ~/.Brewfile: the same shared baseline,
+# from pacman where Arch packages it and from mise, cargo and npm where it
+# doesn't. Re-runs whenever this script changes, so the list below is what
+# run_onchange keys on. Like `brew bundle --global`, it only ever installs.
+#
+# Brewfile entries left out: xcbeautify and idb-companion (Xcode and iOS only),
+# and Bruno (its AUR package is x86_64-only).
+set -e
+
+pkgs="
+  chafa chezmoi cmake direnv docker-compose ffmpeg fzf github-cli gitleaks
+  imagemagick jq neovim pkgconf pre-commit python python-pipx ripgrep
+  tree-sitter tree-sitter-cli unarchiver wget zoxide zsh
+  android-tools scrcpy
+  ttf-hack-nerd
+  rustup cargo-binstall cargo-generate sqlx-cli zellij
+"
+
+# sudo only when something is missing, so a re-run that changes nothing needs
+# no password. pacman -T prints the packages that aren't installed.
+missing=$(pacman -T $pkgs) || true
+[ -z "$missing" ] || sudo pacman -S --needed --noconfirm $missing
+
+command -v mise >/dev/null 2>&1 || { echo "mise missing: install it first (Omarchy ships it)" >&2; exit 1; }
+# Not packaged for Arch: their GitHub releases, through mise.
+mise use -g codex rtk worktrunk
+
+# The cargo entries Arch doesn't package, prebuilt where cargo-binstall finds a
+# release, compiled otherwise.
+rustup default >/dev/null 2>&1 || rustup default stable
+cargo binstall -y create-tauri-app worktrunk-sync workz
+
+mise exec node -- npm install -g corepack markdownlint-cli
+{{ end -}}

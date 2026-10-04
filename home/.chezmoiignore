@@ -33,3 +33,15 @@
 # otherwise delete it on every apply, taking the synced skills with it. It's
 # app-managed state, not config, so it stays unmanaged.
 .claude/skills/synced
+
+# Omarchy links its own skills into ~/.claude/skills (pointing into
+# /usr/share/omarchy). Same story: exact_skills would delete them on every
+# apply, and Omarchy owns them.
+.claude/skills/diagnose-crash
+.claude/skills/omarchy
+
+# Homebrew's package list only means something on macOS; Arch gets the same
+# baseline from .chezmoiscripts/run_onchange_pacman-packages.sh.
+{{ if ne .chezmoi.os "darwin" -}}
+.Brewfile
+{{ end -}}

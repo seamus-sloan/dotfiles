@@ -2,11 +2,13 @@
 
 [![chezmoi](https://img.shields.io/badge/managed%20with-chezmoi-blue?logo=chezmoi&logoColor=white)](https://chezmoi.io)
 [![macOS](https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white)](#)
+[![Arch Linux](https://img.shields.io/badge/Arch%20Linux-1793D1?logo=archlinux&logoColor=white)](#install-new-machine)
 [![Neovim](https://img.shields.io/badge/Neovim-57A143?logo=neovim&logoColor=white)](#neovim)
 [![zsh](https://img.shields.io/badge/shell-zsh-orange)](#shell)
 
-My macOS dotfiles, managed with [chezmoi](https://chezmoi.io). Config is
-identical on every machine — no templating, no secrets, just files.
+My dotfiles for macOS and Arch Linux ([Omarchy](https://omarchy.org)), managed
+with [chezmoi](https://chezmoi.io). Config is identical on every machine — no
+secrets, just files; templates only pick the OS's package manager.
 
 <!-- TODO: drop a terminal screenshot at docs/assets/terminal.png and uncomment:
 ![terminal](docs/assets/terminal.png)
@@ -22,7 +24,7 @@ identical on every machine — no templating, no secrets, just files.
 | **Worktrunk** | [`home/dot_config/worktrunk`](home/dot_config/worktrunk) | [`wt`](https://worktrunk.dev) config for worktree-per-branch workflow |
 | **Claude Code** | [`home/dot_claude`](home/dot_claude) | Global instructions, skills, hooks, and statusline |
 | **opencode** | [`home/dot_config/opencode`](home/dot_config/opencode) | Bedrock providers, plus the Claude Code config reused rather than duplicated — see [`docs/opencode.md`](docs/opencode.md) |
-| **Homebrew** | [`home/dot_Brewfile`](home/dot_Brewfile) | Shared package baseline — installs everywhere, never uninstalls machine-local extras |
+| **Packages** | [`home/dot_Brewfile`](home/dot_Brewfile), [`home/.chezmoiscripts`](home/.chezmoiscripts) | Shared package baseline — Homebrew on macOS, pacman (plus mise, cargo, npm) on Arch; installs everywhere, never uninstalls machine-local extras |
 | **SSH** | [`home/private_dot_ssh`](home/private_dot_ssh) | Root config + defaults; host inventory pulled from a private side repo into `~/.ssh/config.d`, machine-local hosts in `~/.ssh/config.local` |
 
 ## Layout
@@ -33,7 +35,7 @@ identical on every machine — no templating, no secrets, just files.
 ├── docs/
 └── home/                 # mirrors $HOME in chezmoi source notation
     ├── .chezmoi.toml.tmpl        # records the clone location on init
-    ├── .chezmoiscripts/          # run-once machine bootstrap
+    ├── .chezmoiscripts/          # machine bootstrap: Homebrew (macOS), pacman (Arch)
     ├── dot_gitconfig             # → ~/.gitconfig
     ├── dot_claude/               # → ~/.claude  (instructions, skills, hooks)
     └── dot_config/               # → ~/.config
@@ -50,10 +52,14 @@ deleted from `$HOME` on apply. Everything else is add/update only.
 ## Install (new machine)
 
 ```sh
-brew install chezmoi
+brew install chezmoi                  # macOS
+sudo pacman -S --needed chezmoi zsh   # Arch Linux
 git clone git@github.com:seamus-sloan/dotfiles.git ~/Repos/dotfiles
 chezmoi init --source ~/Repos/dotfiles --apply
 ```
+
+On Arch, also make zsh the login shell (`chsh -s /usr/bin/zsh`): the aliases
+and the Claude Code statusline are zsh.
 
 `init` writes `~/.config/chezmoi/chezmoi.toml` pointing at the clone, so every
 later `chezmoi` command works without `--source`.
