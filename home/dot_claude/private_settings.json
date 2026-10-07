@@ -63,12 +63,11 @@
   },
   "enabledPlugins": {
     "rust-analyzer-lsp@claude-plugins-official": true,
-    "chrome-devtools-mcp@claude-plugins-official": true,
-    "ios-simulator-skill@conorluddy": true,
     "warp@claude-code-warp": true,
-    "i-have-adhd@i-have-adhd": true,
     "github@claude-plugins-official": true,
-    "hey@37signals": true
+    "hey@37signals": true,
+    "toronto-slang@toronto-slang": true,
+    "vibemaxx@vibemaxx": true
   },
   "extraKnownMarketplaces": {
     "conorluddy": {
@@ -93,6 +92,18 @@
       "source": {
         "source": "github",
         "repo": "basecamp/claude-plugins"
+      }
+    },
+    "toronto-slang": {
+      "source": {
+        "source": "github",
+        "repo": "seamus-sloan/toronto-slang"
+      }
+    },
+    "vibemaxx": {
+      "source": {
+        "source": "github",
+        "repo": "seamus-sloan/vibemaxx"
       }
     }
   },
