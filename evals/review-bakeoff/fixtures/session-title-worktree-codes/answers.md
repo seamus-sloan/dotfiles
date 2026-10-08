@@ -25,6 +25,11 @@ Buckets: **bug** (any good reviewer should find it from the code alone), **spec*
 | BU8 | unplanted | docs | `exact_skills/session-title/SKILL.md` | the session-title docs don't describe path rows or the `gh pr view` fold | docs not updated |
 | BU9 | unplanted | excess | `repo-code.sh:21`, `plugin:75` | the plugin passes the same directory twice; `repo-code.sh` could derive the worktree root itself | the second argument is redundant |
 | BU10 | unplanted | design | `repo-codes` | absolute-path pins in a shared, untemplated chezmoi file don't carry across machines and outlive their worktrees | absolute paths don't belong in the synced file |
+| BU12 | unplanted | correctness | `plugin:140-158` | the PR fold has no placeholder guard, so folding into a session still titled `New session - …` writes `#42 New session - …` and races opencode's title agent | the fold ignores the placeholder |
+| BU13 | unplanted | correctness | `plugin:148-155` | `folded` is set before `session.get`, so if the get fails the fold is never retried for that number | a failed fold never retries |
+| BU14 | unplanted | correctness | `repo-code.sh:55-56` | path rows match by exact string, so a trailing slash or the `/var` vs `/private/var` alias misses the pin | the path isn't normalised before matching |
+| BU15 | unplanted | test | `tests/session-title.test.mjs` | no test covers the `gh pr create` fold, the subagent skip, or the self-write guard | those paths are untested |
+| BU16 | unplanted | correctness | `plugin:124-125` | the `written` guard skips any event whose title the plugin last wrote, so a session that moves worktrees keeps its stale code | stale code survives a worktree move |
 | BU11 | unplanted | excess | `plugin:81-86` | `stripCode` reimplements `.replace(CODE_SUFFIX, "")`, and the one-liner avoids B5 entirely | `stripCode` could be a `replace` |
 
 Not seeded but acceptable as valid extras when argued concretely: the plugin passes the same directory twice to `repo-code.sh`; `gh pr view <other-number>` folds an unrelated PR into the title; no test covers a fresh unsuffixed title.

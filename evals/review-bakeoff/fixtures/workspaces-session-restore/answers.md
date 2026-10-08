@@ -29,6 +29,10 @@ Buckets: **bug** (any good reviewer should find it from the code alone), **spec*
 | CU10 | unplanted | test | `spec:64-70` | the exact-name test passes even with the exact-match branch deleted, so it doesn't pin the precedence | the test can't tell exact from partial matching |
 | CU12 | unplanted | concurrency | `ws:52-58` | overlapping saves open the same `.tmp` path, so their writes interleave and the renamed file can be corrupt JSON (separate from C7's lost update) | the shared temp file can end up corrupt |
 | CU13 | unplanted | correctness | `ws:41-45` | a JSON `null` decodes to `vim.NIL`, which is truthy, so `state.recent or {}` keeps it and `ipairs` crashes on a hand-edited file | `vim.NIL` survives the `or {}` default |
+| CU14 | unplanted | test | `spec` | nothing tests `restore`, `close`, or the first run with no state file, the paths behind C1, C3–C5 | restore / close / first run untested |
+| CU15 | unplanted | correctness | `ws:63-74` | recent entries for projects that no longer exist are never pruned, so they hold slots in the 10 | dead entries occupy recent slots |
+| CU16 | unplanted | correctness | `ws:257`, `ws:63-74` | restoring records recency in tab order, so the last tab restored becomes "most recent" and a restore reorders the picker | restore reorders recency |
+| CU17 | unplanted | excess | `ws:23` | `vim.g.workspaces_state_path` exists only for the test; pointing `XDG_STATE_HOME` at a temp dir does the same | the test-only knob is unneeded |
 | CU11 | unplanted | excess | `ws:51-59` | the async callback chain buys nothing here; a synchronous write removes C7 and the spec's `settle()` waits | the save could be synchronous |
 
 ## Decoys

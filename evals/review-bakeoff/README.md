@@ -45,4 +45,4 @@ Reviewers are curious, and each of these leaked during development:
 
 `grade.sh` hands `answers.md`, the final report and any structured findings to a fresh grader session. The grader rules each seed FOUND, PARTIAL, DISMISSED (a reviewer found it, then the judge threw it out) or MISSED, and classes every other reported finding as VALID, NIT or FALSE. The scoreboard counts FOUND as 1 and PARTIAL as 0.5.
 
-LLM reviews are noisy: compare several runs per cell before reading much into a one-seed difference.
+Planted seeds saturate quickly, so the separating measure is the **unplanted** pool: every valid finding a run reports that isn't in the key gets verified and added to the fixture's `answers.md` as an `unplanted` row, and every run is regraded against the grown pool. LLM reviews are noisy: compare several runs per cell before reading much into a one-issue difference. The latest numbers are in [RESULTS.md](RESULTS.md).
