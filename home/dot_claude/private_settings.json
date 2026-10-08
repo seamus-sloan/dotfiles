@@ -67,7 +67,8 @@
     "github@claude-plugins-official": true,
     "hey@37signals": true,
     "toronto-slang@toronto-slang": true,
-    "vibemaxx@vibemaxx": true
+    "vibemaxx@vibemaxx": true,
+    "precise@precise": true
   },
   "extraKnownMarketplaces": {
     "conorluddy": {
@@ -105,8 +106,15 @@
         "source": "github",
         "repo": "seamus-sloan/vibemaxx"
       }
+    },
+    "precise": {
+      "source": {
+        "source": "github",
+        "repo": "seamus-sloan/precise"
+      }
     }
   },
+  "outputStyle": "precise:precise",
   "effortLevel": "xhigh",
   "modelSettings": {
     "claude-opus-5": {
