@@ -7,7 +7,7 @@
 
 set -euo pipefail
 
-COMMAND=$(jq -r '.tool_input.command // ""' < /dev/stdin)
+COMMAND=$(jq -r '.tool_input.command // ""')
 
 # Empty command → nothing to check.
 [ -z "$COMMAND" ] && exit 0
