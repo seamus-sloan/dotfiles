@@ -59,7 +59,12 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "zsh ~/.claude/statusline-command.sh"
+    "command": "zsh ~/.claude/statusline-command.sh",
+    "refreshInterval": 5
+  },
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "zsh ~/.claude/subagent-statusline.sh"
   },
   "enabledPlugins": {
     "rust-analyzer-lsp@claude-plugins-official": true,
