@@ -1,10 +1,10 @@
 ---
 name: dev-loop
-description: Agentic development loop — branch → plan → implement → opposing self-reviews via pr-review (prosecutor vs defender, every finding verified by the orchestrator) → fix → test → draft PR. Triggers when the user says "/dev-loop <issue # or spec>", "dev-loop this", "run the dev loop on #123", "take this issue end to end".
-argument-hint: "<issue # | issue URL | spec file | spec text> [ready] [merge] [no-pr] [rounds=N] [branch=<name>] [plan=<path>] [review=neutral] [skip=prosecutor|defender]"
+description: Agentic development loop — branch → plan → implement → panel review via pr-review (a finder per review angle, a verifier per finding, a gap sweep; the orchestrator rules on each) → fix → test → draft PR. Triggers when the user says "/dev-loop <issue # or spec>", "dev-loop this", "run the dev loop on #123", "take this issue end to end".
+argument-hint: "<issue # | issue URL | spec file | spec text> [ready] [merge] [no-pr] [rounds=N] [branch=<name>] [plan=<path>]"
 ---
 
-# dev-loop (branch → plan → implement → opposing reviews → fix → test → PR)
+# dev-loop (branch → plan → implement → panel review → fix → test → PR)
 
 The session running this skill is the **orchestrator**. It plans, dispatches, judges, and reports. It delegates the real work to existing skills and custom agents and never re-implements them:
 
@@ -12,7 +12,7 @@ The session running this skill is the **orchestrator**. It plans, dispatches, ju
 |---|---|
 | Plan | [`writing-plans`](../writing-plans/SKILL.md) via a fresh subagent |
 | Implement, fix | `dev-loop-implementer` agent (runs [`tdd`](../tdd/SKILL.md)) |
-| Review | [`pr-review`](../pr-review/SKILL.md): `review-prosecutor` + `review-defender` in parallel, or `review-neutral` alone with `review=neutral` |
+| Review | [`pr-review`](../pr-review/SKILL.md): a `review-finder` per angle, a `review-verifier` per candidate, then a gap sweep |
 | Judge findings | **the orchestrator itself**, by `pr-review`'s verify-and-rule steps — there is no referee |
 | Verify | [`verify-before-claim`](../verify-before-claim/SKILL.md), [`test-failure-triage`](../test-failure-triage/SKILL.md) |
 | Ship | [`open-pr`](../open-pr/SKILL.md), or [`ship-pr`](../ship-pr/SKILL.md) with `merge` |
@@ -20,7 +20,7 @@ The session running this skill is the **orchestrator**. It plans, dispatches, ju
 Two invariants hold for the whole run:
 
 1. **The orchestrator never edits the worktree.** Every source change comes from the implementer. The orchestrator writes only to its scratchpad.
-2. **The orchestrator is the only judge.** Reviewers report; nothing is acted on until the orchestrator has produced its own evidence for it.
+2. **The orchestrator is the only judge.** Finders and verifiers report; nothing is acted on until the orchestrator has ruled on it, re-checking every CRITICAL or MAJOR defect itself.
 
 Read `ship-pr` and `verify-before-claim` before running so their hard rules carry through.
 
@@ -37,8 +37,6 @@ Parse `$ARGUMENTS`. The first token that is an integer, `#n`, or an issue URL na
 | `rounds=N` | review-round cap (default **2**, hard max 5) |
 | `branch=<name>` | the branch and worktree already exist; skip §2's create |
 | `plan=<path>` | the plan is already written; skip §3 |
-| `review=neutral` | one balanced reviewer (`review-neutral`) instead of the prosecutor/defender pair |
-| `skip=prosecutor` / `skip=defender` | run one of the pair only; recorded in the report as a degraded run |
 
 Natural-language forms are accepted ("and merge", "but don't open a PR", "not a draft", "three rounds") and normalised to the tokens above. A run must never depend on an undocumented phrase — if the user asks for something not in this table, ask once, then proceed.
 
@@ -93,12 +91,12 @@ Never trust the self-report. On `DONE`: `git -C <WORKTREE> status --porcelain` m
 
 Let `r = 1`, `cap` from §0 (default 2). Each round:
 
-1. **Snapshot.** Refuse to start on a dirty tree. `git -C <WORKTREE> diff origin/main...HEAD > <SCRATCH>/dev-loop/<branch>/round-<r>.patch`; keep `--stat` for the report. Every reviewer reads this one file, so they see an identical diff.
-2. **Review with `pr-review`.** Invoke the [`pr-review`](../pr-review/SKILL.md) skill on round 1 and run its §4–§8 every round, passing: reviewers `prosecutor defender` (or `neutral` with `review=neutral`, or the one left by `skip=`), the run context block, the patch path, the plan path, `Round: <r>`, and from round 2 the prior verdict table. It dispatches the reviewers, verifies every row, rules on each, and returns the verdict table. Its rulings go to the user in the final report (§8), never into the PR: judgment calls with their rationale, so the user can overrule them; DEFERRED_TO_USER items, which never block the loop but block a `merge` run exactly like a `ship-pr` deferral.
-3. **Severity gate.** CRITICAL and MAJOR CONFIRMED items always enter the brief. MINOR and excess (defender, or neutral `Kind: excess`) items enter only if the fix is under ~5 lines; otherwise they are reported, not fixed.
-4. **Exit check.** Empty brief → loop done, go to §6. `r == cap` with a non-empty brief → do not fix; go to §6 with the brief listed as unresolved, and open no PR unless the user overrode (`ready` / `merge` still stop here and hand back). Convergence guard: a row CONFIRMED in two consecutive rounds after a fix attempt → the next implementer dispatch runs on Opus (`model: "opus"`); still unresolved at the cap → `BLOCKED`, hand back.
-5. **Fix brief.** One block per CONFIRMED item that passed the gate: ID, location, what to change (the finding's suggested fix or simpler alternative), and the verify command that must pass afterwards. Append: "Do not touch DISMISSED, JUDGMENT-kept, or DEFERRED items: <ids>. Commit as `fix:` on top. Never amend."
-6. **Dispatch** `dev-loop-implementer` with the run context block, `Mode: fix`, and the brief. Handle status as in §4. On `DONE`, run each item's verify command yourself; anything still failing stays CONFIRMED into the next round.
+1. **Snapshot.** Refuse to start on a dirty tree. `git -C <WORKTREE> diff origin/main...HEAD > <SCRATCH>/dev-loop/<branch>/round-<r>.patch`; keep `--stat` for the report. Every finder and verifier reads this one file, so they all see an identical diff.
+2. **Review with `pr-review`.** Invoke the [`pr-review`](../pr-review/SKILL.md) skill on round 1 and run its §3–§9 every round, passing the run context block, the patch path, the plan path, `Round: <r>`, and from round 2 the prior verdict table. It dispatches the finder panel, verifies every candidate, sweeps for gaps, rules on each row, and returns the verdict table. Its rulings go to the user in the final report (§8), never into the PR: judgment calls with their rationale, so the user can overrule them; DEFERRED_TO_USER items, which never block the loop but block a `merge` run exactly like a `ship-pr` deferral.
+3. **Severity gate.** CRITICAL and MAJOR items, CONFIRMED or PLAUSIBLE, always enter the brief. MINOR and excess (`Kind: excess`) items enter only if the fix is under ~5 lines; otherwise they are reported, not fixed.
+4. **Exit check.** Empty brief → loop done, go to §6. `r == cap` with a non-empty brief → do not fix; go to §6 with the brief listed as unresolved, and open no PR unless the user overrode (`ready` / `merge` still stop here and hand back). Convergence guard: a row CONFIRMED or PLAUSIBLE in two consecutive rounds after a fix attempt → the next implementer dispatch runs on Opus (`model: "opus"`); still unresolved at the cap → `BLOCKED`, hand back.
+5. **Fix brief.** One block per CONFIRMED or PLAUSIBLE item that passed the gate (a PLAUSIBLE item carries its "what would confirm" line, and its fix is a guard against that trigger): ID, location, what to change (the finding's suggested fix or simpler alternative), and the verify command that must pass afterwards. Append: "Do not touch DISMISSED, JUDGMENT-kept, or DEFERRED items: <ids>. Commit as `fix:` on top. Never amend."
+6. **Dispatch** `dev-loop-implementer` with the run context block, `Mode: fix`, and the brief. Handle status as in §4. On `DONE`, run each item's verify command yourself; anything still failing keeps its verdict into the next round.
 7. `r += 1`; back to step 1.
 
 Print `pr-review`'s verdict table after each round.
@@ -124,9 +122,8 @@ Mechanical lint fixes (`cargo fmt`, `biome format`) also go through the implemen
 ```
 dev-loop: <branch> — <issue/spec title>
 Plan: <path> (<n> tasks)   Implementation: <m> commits <sha..sha>, <status>
-Review rounds: <r>/<cap>   Reviewers: <prosecutor + defender | neutral>   [degraded: skip=<reviewer>]
-  R1  P: <n> (<c> confirmed / <d> dismissed / <j> judgment / <u> deferred)   D: <n> (…)   fixes: <k> commits
-      (neutral runs: N: <n> (…) in place of P and D)
+Review rounds: <r>/<cap>
+  R1  candidates <raw> → <deduped>: <c> confirmed / <p> plausible / <d> dismissed / <j> judgment / <u> deferred   fixes: <k> commits
   R2  …
 Verification: <TEST_CMD> → exit 0, <n> passed | <LINT_CMD> → exit 0
 Pre-existing failures: <list | none>

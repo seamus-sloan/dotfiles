@@ -131,7 +131,7 @@ Be terse. Don't comment on style — that's the next reviewer's job.
 
 ### Code-quality reviewer
 
-Dispatch the `review-neutral` agent (`subagent_type: review-neutral`) on the task's commit: save `git show <sha>` to the scratchpad as the diff file and build its context block per [pr-review](../pr-review/SKILL.md) §3, with the plan task as the spec. Verify and rule on its findings as `pr-review` §6–§7 does. Any CONFIRMED CRITICAL or MAJOR row → REQUEST_CHANGES; otherwise APPROVE.
+Run [pr-review](../pr-review/SKILL.md) §3–§9 on the task's commit: save `git show <sha>` to the scratchpad as the diff file, and use the plan task as the spec. Any CRITICAL or MAJOR row ruled CONFIRMED or PLAUSIBLE → REQUEST_CHANGES; otherwise APPROVE.
 
 ## After all tasks pass
 
