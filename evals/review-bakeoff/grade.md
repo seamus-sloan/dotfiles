@@ -15,7 +15,7 @@ The fixture's code is in the current directory; read it to rule on findings that
 
 ## Rule on every seed
 
-For each answer-key row, exactly one status:
+For each answer-key row, exactly one status. Rows with bucket `unplanted` are real issues earlier runs found and verified; rule on them exactly like the planted ones.
 
 - **FOUND**: a reported finding identifies this defect: the same location (same line or function) *and* the mechanism in the "Credit when" column. Wording can differ, but the mechanism must be the one in the key.
 - **PARTIAL**: a reported finding is at the right place but its mechanism is vague or different (for example "this regex looks fragile" for a lost anchor).
@@ -30,7 +30,7 @@ Each reported finding that credited no seed is one of:
 
 - **VALID**: a real defect or a real excess. Check it against the code; you may run read-only commands. The answer key's "Not seeded but acceptable" note lists some known ones.
 - **NIT**: true but trivial (style, naming, a comment) with no behavioural or maintenance cost worth a fix.
-- **FALSE**: wrong about the code, already handled, or not a problem.
+- **FALSE**: wrong about the code, already handled, or not a problem. A finding that calls one of the answer key's **decoys** a defect is always FALSE.
 
 ## Output
 

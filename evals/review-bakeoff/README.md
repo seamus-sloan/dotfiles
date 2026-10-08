@@ -13,6 +13,7 @@ Each fixture is a realistic feature diff on this repo, pinned to a base commit, 
 |---|---|---|---|
 | `commit-hook-guards` | POSIX sh git hooks | 11 (A1–A11) | tuning |
 | `session-title-worktree-codes` | JS opencode plugin + bash | 9 (B1–B9) | holdout: don't tune prompts against it |
+| `workspaces-session-restore` | nvim Lua, larger and sparser, with decoys | 11 (C1–C11) + 3 decoys | holdout |
 
 `fixtures/<name>/` holds `fixture.patch`, `spec.md`, `answers.md` (the key; never give it to a reviewer), `fixture.env`, and `verify-seeds.*`, which reproduces every seed against a fixture worktree. Seeds are bucketed as bug, spec (needs the spec to see), test, or excess.
 
@@ -26,11 +27,19 @@ Each fixture is a realistic feature diff on this repo, pinned to a base commit, 
 node scoreboard.mjs "$TMPDIR/review-bakeoff"
 ```
 
-- `run.sh` creates the fixture's worktree with `wt` on first use, and refuses to run unless it matches `fixture.patch` and is clean.
+- `run.sh` builds the fixture on first use (`lib.sh`), and refuses to run unless it matches `fixture.patch` and is clean.
 - `--src` reviews with the skills and agents of a chezmoi source tree, so a candidate can be measured before it is applied. Its agents reach the session through `claude --agents`, which overrides the installed agents of the same name.
-- Output lands in `$BAKEOFF_RUNS` (default `$TMPDIR/review-bakeoff`), never in the repo. A dev-loop reviewer only ever sees the worktree and a fresh temp directory with the plan and patch.
-- `extract.mjs` flags a run as contaminated if any of its transcripts mention the answer key or this harness.
-- Runs use `--model opus --effort max --permission-mode auto --strict-mcp-config`. A run costs roughly what a real review does.
+- Output lands in `$BAKEOFF_RUNS` (default `$TMPDIR/review-bakeoff`), never in the repo.
+- Runs use `--model opus --effort max --permission-mode auto --strict-mcp-config`, and `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`: without it, `-p` kills background agents 10 minutes after the main turn ends, mid-review.
+
+## Keeping the answer out of reach
+
+Reviewers are curious, and each of these leaked during development:
+
+- **Shared refs.** A fixture is a standalone clone cut off at its base commit, not a worktree of this repo, so `git log --all` can't reach this harness's commits.
+- **Transcripts.** The session that built a fixture describes its seeds, and a reviewer went reading `~/.claude/projects` for context. Runs deny `Read`/`Grep`/`Glob` on transcripts, this harness and earlier runs, and append the same out-of-scope note to every reviewer's system prompt. The grader runs with `--no-session-persistence`, so its transcript never lands where the next reviewer of that fixture could find it.
+- **Paths.** A dev-loop reviewer sees only the fixture checkout and a fresh temp directory holding the plan, the patch and, with `--src`, a copy of the candidate's skills; nothing next to them names this eval.
+- **Detection.** `extract.mjs` flags a run as contaminated if a transcript mentions the answer key or this harness, or if any tool call reached into a session transcript. A contaminated run doesn't count; rerun it.
 
 ## Scoring
 

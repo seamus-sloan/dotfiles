@@ -10,8 +10,8 @@
 # --src        review with the skills and agents in a chezmoi source tree
 #              (e.g. a worktree's home/dot_claude) instead of the installed ones
 #
-# The fixture worktree is created from fixture.patch on first use and checked
-# against it on every run. Output lands in $BAKEOFF_RUNS (default
+# The fixture checkout is created from fixture.patch on first use (see lib.sh)
+# and checked against it on every run. Output lands in $BAKEOFF_RUNS (default
 # $TMPDIR/review-bakeoff), never inside the repo; grade it with grade.sh.
 
 set -euo pipefail
@@ -32,20 +32,11 @@ FDIR="$HERE/fixtures/$FIXTURE"
 [ -f "$FDIR/fixture.env" ] || { echo "no fixture: $FIXTURE" >&2; exit 2; }
 # shellcheck source=/dev/null
 . "$FDIR/fixture.env"
+# shellcheck source=lib.sh
+. "$HERE/lib.sh"
 
-# --- fixture worktree -------------------------------------------------------
-wt_path() { wt list --format=json | jq -r --arg b "$BRANCH" '.items[] | select(.branch == $b) | .worktree.path // empty'; }
-WT=$(wt_path)
-if [ -z "$WT" ]; then
-  wt switch --create "$BRANCH" --base "$BASE" --no-cd --yes >/dev/null
-  WT=$(wt_path)
-  git -C "$WT" am -q "$FDIR/fixture.patch"
-  git -C "$WT" branch -q --set-upstream-to=origin/main
-fi
-[ -z "$(git -C "$WT" status --porcelain)" ] || { echo "fixture worktree is dirty: $WT" >&2; exit 1; }
-want=$(git patch-id --stable <"$FDIR/fixture.patch" | cut -d' ' -f1)
-have=$(git -C "$WT" diff "$BASE"...HEAD | git patch-id --stable | cut -d' ' -f1)
-[ "$want" = "$have" ] || { echo "fixture worktree doesn't match fixture.patch: $WT" >&2; exit 1; }
+WT=$(fixture_repo "$FDIR")
+fixture_check "$WT" "$FDIR"
 
 # --- run directory ----------------------------------------------------------
 LABEL=$REVIEWER
@@ -58,7 +49,21 @@ CTX=$(mktemp -d "${TMPDIR:-/tmp}/dev-loop.XXXXXX")
 cp "$FDIR/spec.md" "$CTX/plan.md"
 SESSION=$(uuidgen | tr 'A-Z' 'a-z')
 
+RUNS_ROOT="${BAKEOFF_RUNS:-${TMPDIR:-/tmp}/review-bakeoff}"
+# Keep the reviewer out of everything that could hold the answer: other
+# sessions' transcripts (the session that built a fixture describes its seeds),
+# this harness, and earlier runs. Deny rules cover the file tools; the appended
+# prompt covers the shell, identically for every reviewer.
+jq -n --arg harness "/$HERE/**" --arg runs "/$RUNS_ROOT/**" '{permissions: {deny: [
+  "Read(~/.claude/projects/**)", "Grep(~/.claude/projects/**)", "Glob(~/.claude/projects/**)",
+  "Read(\($harness))", "Grep(\($harness))", "Glob(\($harness))",
+  "Read(\($runs))", "Grep(\($runs))", "Glob(\($runs))",
+  "Read(**/evals/review-bakeoff/**)", "Grep(**/evals/review-bakeoff/**)", "Glob(**/evals/review-bakeoff/**)"
+]}}' >"$RUN/settings.json"
+FENCE="Out of scope for this task, so never read or search them: other sessions' transcripts under ~/.claude/projects, and git worktrees or checkouts other than the one you were started in."
+
 ARGS=(-p --model opus --effort max --permission-mode auto --strict-mcp-config
+  --settings "$RUN/settings.json" --append-system-prompt "$FENCE"
   --output-format stream-json --verbose --session-id "$SESSION")
 
 case "$REVIEWER" in
@@ -69,6 +74,10 @@ case "$REVIEWER" in
   dev-loop)
     SKILLS="Invoke the installed dev-loop and pr-review skills."
     if [ -n "$SRC" ]; then
+      # A copy, so the session never learns a path inside the repo that holds
+      # this harness.
+      cp -R "$SRC/." "$CTX/dot_claude"
+      SRC="$CTX/dot_claude"
       node "$HERE/agents-json.mjs" "$SRC/exact_private_agents" >"$RUN/agents.json"
       ARGS+=(--agents "$RUN/agents.json")
       SKILLS="Do not invoke the installed dev-loop or pr-review skills. Read and follow $SRC/exact_skills/dev-loop/SKILL.md and $SRC/exact_skills/pr-review/SKILL.md instead, and wherever they cite a file under ~/.claude/, read its counterpart under $SRC (agents live in exact_private_agents/, skills in exact_skills/). The agent definitions passed on the command line already override the installed ones."
@@ -93,6 +102,9 @@ esac
 
 printf '%s\n' "$PROMPT" >"$RUN/prompt.txt"
 echo "run: $RUN"
+# -p otherwise kills background agents 10 minutes after the main turn ends,
+# which cuts a review off before it verifies anything.
+export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0
 (cd "$WT" && claude "${ARGS[@]}" "$PROMPT") >"$RUN/stream.jsonl" 2>"$RUN/stderr.txt" || echo "claude exited $?" >&2
 cp -R "$CTX" "$RUN/ctx" && rm -rf "$CTX"
 node "$HERE/extract.mjs" "$RUN"

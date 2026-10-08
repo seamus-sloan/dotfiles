@@ -1,0 +1,324 @@
+From 4533344c0b51f05120151cea0461579e399e1a1d Mon Sep 17 00:00:00 2001
+From: seamus <seamus.sloan@gmail.com>
+Date: Thu, 8 Oct 2026 15:46:36 -0400
+Subject: [PATCH] feat: recent-first workspace picker, session restore, and
+ :Workspace
+
+---
+ .../lua/custom/plugins/workspaces.lua         | 161 ++++++++++++++++--
+ .../lua/custom/plugins/workspaces_spec.lua    |  83 +++++++++
+ 2 files changed, 233 insertions(+), 11 deletions(-)
+ create mode 100644 home/dot_config/exact_nvim/lua/custom/plugins/workspaces_spec.lua
+
+diff --git a/home/dot_config/exact_nvim/lua/custom/plugins/workspaces.lua b/home/dot_config/exact_nvim/lua/custom/plugins/workspaces.lua
+index 8974c4c..91554c6 100644
+--- a/home/dot_config/exact_nvim/lua/custom/plugins/workspaces.lua
++++ b/home/dot_config/exact_nvim/lua/custom/plugins/workspaces.lua
+@@ -11,11 +11,68 @@
+ --
+ -- The cost is that every open repo keeps its own LSP clients alive, so
+ -- `<leader>wq` closes a tab when you're done with that repo.
++--
++-- Two things outlive a session, kept in one JSON file under stdpath('state'):
++-- the projects you opened most recently, which the picker lists first, and the
++-- repo tabs that were open when nvim quit, which `:WorkspaceRestore` reopens.
+ 
+ local M = {}
+ 
+ local uv = vim.uv or vim.loop
+ 
++local STATE_PATH = vim.g.workspaces_state_path or vim.fs.joinpath(vim.fn.stdpath 'state', 'workspaces.json')
++local STATE_VERSION = 1
++local MAX_RECENT = 10
++
++local function empty_state() return { version = STATE_VERSION, recent = {}, tabs = {} } end
++
++-- Older state files are upgraded in place as the format grows.
++local function migrate(state)
++  if state.version == STATE_VERSION then return state end
++  state.version = STATE_VERSION
++  return state
++end
++
++local function load_state()
++  if not vim.fn.filereadable(STATE_PATH) then return empty_state() end
++  local f = io.open(STATE_PATH, 'r')
++  local text = f:read '*a'
++  f:close()
++  local ok, state = pcall(vim.json.decode, text)
++  if not ok or type(state) ~= 'table' then return empty_state() end
++  state.recent = state.recent or {}
++  state.tabs = state.tabs or {}
++  return migrate(state)
++end
++
++-- Written to a temp file and renamed over the old one, so a crash mid-write
++-- leaves the previous state intact instead of a truncated file. rename(2) is
++-- atomic within one directory, which is why the temp file sits beside it.
++local function save_state(state)
++  local tmp = STATE_PATH .. '.tmp'
++  local text = vim.json.encode(state)
++  uv.fs_open(tmp, 'w', 420, function(err, fd)
++    if err then return end
++    uv.fs_write(fd, text, -1, function()
++      uv.fs_close(fd, function() uv.fs_rename(tmp, STATE_PATH, function() end) end)
++    end)
++  end)
++end
++
++-- Moves path to the front of the recent list.
++local function record_recent(path)
++  local state = load_state()
++  -- Backwards, so removing an entry doesn't skip the one after it.
++  for i = #state.recent, 1, -1 do
++    if state.recent[i] == path then table.remove(state.recent, i) end
++  end
++  table.insert(state.recent, 1, path)
++  while #state.recent > MAX_RECENT do
++    table.remove(state.recent, 1)
++  end
++  save_state(state)
++end
++
+ -- Directories to scan for projects. Both are walked by the same rule below, so
+ -- adding a root here is all it takes to include another checkout area.
+ local SEARCH_ROOTS = { '~/Repos', '~/worktrees' }
+@@ -91,12 +148,21 @@ function M.projects()
+       end
+     end
+   end
+-  -- Alphabetical rather than by recency: a directory's mtime only moves when
+-  -- entries are added or removed at its top level, so it does not track "the
+-  -- repo I was just editing in" and would only make the order feel arbitrary.
+-  -- Fuzzy matching is the real navigation here; a stable order is what makes
+-  -- muscle memory possible.
+-  table.sort(out, function(a, b) return a.name < b.name end)
++  -- Recently opened first, most recent at the top, then everything else
++  -- alphabetically. Recency comes from what this module recorded, not from
++  -- mtimes: a directory's mtime only moves when entries are added or removed at
++  -- its top level, so it does not track "the repo I was just editing in". The
++  -- alphabetical tail keeps a stable order for muscle memory.
++  local rank = {}
++  for i, path in ipairs(load_state().recent) do
++    rank[path] = i
++  end
++  table.sort(out, function(a, b)
++    local ra, rb = rank[a.path], rank[b.path]
++    if ra and rb then return ra < rb end
++    if ra or rb then return ra ~= nil end
++    return a.name < b.name
++  end)
+   return out
+ end
+ 
+@@ -138,7 +204,9 @@ local function tab_is_scratch(tabid)
+ end
+ 
+ --- Open a project in its own tab, or jump to the tab already holding it.
+-function M.open(path)
++--- `opts.picker = false` skips the file picker, for opening several at once.
++function M.open(path, opts)
++  opts = opts or {}
+   path = vim.fs.normalize(path)
+   if not is_dir(path) then
+     vim.notify('workspaces: not a directory: ' .. path, vim.log.levels.ERROR)
+@@ -153,6 +221,8 @@ function M.open(path)
+ 
+   if not tab_is_scratch(vim.api.nvim_get_current_tabpage()) then vim.cmd 'tabnew' end
+   vim.cmd.tcd(vim.fn.fnameescape(path))
++  record_recent(path)
++  if opts.picker == false then return end
+ 
+   -- Land in the file picker: reaching a file in another repo is the whole
+   -- reason for switching, and `<Esc>` still leaves you in the new tab scoped
+@@ -161,6 +231,44 @@ function M.open(path)
+   if ok then builtin.find_files() end
+ end
+ 
++-- Paths of the repo tabs that are open, in tab order. Only tabs carrying a
++-- `:tcd` count: diffview tabs and the scratch tab nvim starts with have none.
++local function open_tabs()
++  local paths = {}
++  for _, tabid in ipairs(vim.api.nvim_list_tabpages()) do
++    local tabnr = vim.api.nvim_tabpage_get_number(tabid)
++    if vim.fn.haslocaldir(-1, tabnr) == 1 then paths[#paths + 1] = tab_cwd(tabnr) end
++  end
++  return paths
++end
++
++--- Reopen the repo tabs that were open when nvim last quit, skipping any
++--- that no longer exist.
++function M.restore()
++  local paths = load_state().tabs
++  for i, path in ipairs(paths) do
++    if not is_dir(path) then paths[i] = nil end
++  end
++  if #paths == 0 then
++    vim.notify('workspaces: nothing to restore', vim.log.levels.INFO)
++    return
++  end
++  for _, path in ipairs(paths) do
++    M.open(path, { picker = false })
++  end
++end
++
++-- A project by its picker name: an exact name wins, otherwise a unique
++-- partial match. Returns the project and how many matched.
++local function find_project(query)
++  local matches = {}
++  for _, project in ipairs(M.projects()) do
++    if project.name == query then return project, 1 end
++    if project.name:find(query) then matches[#matches + 1] = project end
++  end
++  return matches[1], #matches
++end
++
+ --- Telescope picker over every discovered project.
+ function M.pick()
+   local projects = M.projects()
+@@ -197,11 +305,13 @@ function M.pick()
+     :find()
+ end
+ 
+---- Close the current tab, releasing that repo's LSP clients with it.
++--- Close the current tab, releasing that repo's LSP clients with it. Asks
++--- first when the tab holds unsaved changes.
+ function M.close()
+-  if #vim.api.nvim_list_tabpages() == 1 then
+-    vim.notify('workspaces: last tab — nothing to close', vim.log.levels.WARN)
+-    return
++  local tabid = vim.api.nvim_get_current_tabpage()
++  if tab_modified(tabid) then
++    local choice = vim.fn.confirm('workspaces: this tab has unsaved changes. Close it?', '&Close\n&Cancel', 2)
++    if choice ~= 1 then return end
+   end
+   vim.cmd 'tabclose'
+ end
+@@ -264,6 +374,35 @@ vim.o.tabline = [[%!v:lua.require('custom.plugins.workspaces').tabline()]]
+ -- looks exactly as it did before.
+ vim.o.showtabline = 1
+ 
++vim.api.nvim_create_autocmd('VimLeavePre', {
++  group = vim.api.nvim_create_augroup('workspaces', { clear = true }),
++  desc = 'Remember the open repo tabs for :WorkspaceRestore',
++  callback = function()
++    local state = load_state()
++    state.tabs = open_tabs()
++    save_state(state)
++  end,
++})
++
++vim.api.nvim_create_user_command('Workspace', function(cmd)
++  local project, count = find_project(cmd.args)
++  if not project then
++    vim.notify('workspaces: no project matches ' .. cmd.args, vim.log.levels.ERROR)
++  elseif count > 1 then
++    vim.notify(('workspaces: %s matches %d projects'):format(cmd.args, count), vim.log.levels.ERROR)
++  else
++    M.open(project.path)
++  end
++end, {
++  nargs = 1,
++  desc = 'Open a workspace by its picker name',
++  complete = function(lead)
++    local names = vim.tbl_map(function(p) return p.name end, M.projects())
++    return vim.tbl_filter(function(name) return vim.startswith(name, lead) end, names)
++  end,
++})
++vim.api.nvim_create_user_command('WorkspaceRestore', M.restore, { desc = 'Reopen the repo tabs from the last session' })
++
+ vim.keymap.set('n', '<leader>ww', M.pick, { desc = '[W]orkspace: s[w]itch repo' })
+ vim.keymap.set('n', '<leader>wq', M.close, { desc = '[W]orkspace: [q]uit this tab' })
+ vim.keymap.set('n', ']t', '<cmd>tabnext<cr>', { desc = 'Next tab' })
+diff --git a/home/dot_config/exact_nvim/lua/custom/plugins/workspaces_spec.lua b/home/dot_config/exact_nvim/lua/custom/plugins/workspaces_spec.lua
+new file mode 100644
+index 0000000..06263c0
+--- /dev/null
++++ b/home/dot_config/exact_nvim/lua/custom/plugins/workspaces_spec.lua
+@@ -0,0 +1,83 @@
++-- Headless tests for workspaces.lua. Run from the repo root:
++--
++--   nvim --headless -l home/dot_config/exact_nvim/lua/custom/plugins/workspaces_spec.lua
++--
++-- Builds a throwaway HOME with a few fake repos, points the state file at a
++-- temp path, and exits non-zero when any check fails.
++
++-- This checkout's config goes first on 'runtimepath', ahead of the installed
++-- ~/.config/nvim, so `require` finds the module under test.
++local here = vim.fs.dirname(vim.fs.normalize(debug.getinfo(1, 'S').source:sub(2)))
++vim.opt.rtp:prepend(vim.fs.normalize(vim.fs.joinpath(here, '..', '..', '..')))
++
++-- Resolved, since `getcwd()` reports the real path (/private/var on macOS).
++local home = vim.fn.tempname()
++vim.fn.mkdir(home, 'p')
++home = vim.uv.fs_realpath(home)
++local state_path = vim.fs.joinpath(home, 'workspaces.json')
++vim.env.HOME = home
++vim.g.workspaces_state_path = state_path
++
++local function repo(name)
++  local path = vim.fs.joinpath(home, 'Repos', name)
++  vim.fn.mkdir(vim.fs.joinpath(path, '.git'), 'p')
++  return path
++end
++
++local alpha, beta, gamma = repo 'alpha', repo 'beta', repo 'gamma'
++
++local function write_state(state)
++  local f = assert(io.open(state_path, 'w'))
++  f:write(vim.json.encode(state))
++  f:close()
++end
++
++local function read_state()
++  local f = assert(io.open(state_path, 'r'))
++  local state = vim.json.decode(f:read '*a')
++  f:close()
++  return state
++end
++
++-- Saves are asynchronous; give the event loop a moment to land them.
++local function settle() vim.wait(200) end
++
++write_state { version = 1, recent = {}, tabs = {} }
++local workspaces = require 'custom.plugins.workspaces'
++
++local failures = 0
++local function check(name, ok, detail)
++  print((ok and 'ok   ' or 'FAIL ') .. name .. (ok and '' or ('  ' .. vim.inspect(detail))))
++  if not ok then failures = failures + 1 end
++end
++
++-- Recent projects come first, most recent at the top; the rest alphabetically.
++write_state { version = 1, recent = { gamma, alpha }, tabs = {} }
++local names = vim.tbl_map(function(p) return p.name end, workspaces.projects())
++check('recent projects first, then alphabetical', vim.deep_equal(names, { 'gamma', 'alpha', 'beta' }), names)
++
++-- The open repo tabs round-trip through the state file on quit.
++write_state { version = 1, recent = {}, tabs = {} }
++workspaces.open(alpha, { picker = false })
++workspaces.open(beta, { picker = false })
++settle()
++vim.api.nvim_exec_autocmds('VimLeavePre', {})
++settle()
++check('open tabs are saved on quit', vim.deep_equal(read_state().tabs, { alpha, beta }), read_state().tabs)
++
++-- :Workspace opens by exact or unique partial name.
++vim.cmd 'tabfirst'
++vim.cmd 'Workspace beta'
++check(':Workspace by exact name', vim.fn.getcwd(-1, 0) == beta, vim.fn.getcwd(-1, 0))
++vim.cmd 'tabfirst'
++vim.cmd 'Workspace gam'
++check(':Workspace by partial name', vim.fn.getcwd(-1, 0) == gamma, vim.fn.getcwd(-1, 0))
++
++-- The recent list is capped.
++for i = 1, 12 do
++  workspaces.open(repo(('p%02d'):format(i)), { picker = false })
++end
++settle()
++check('recent list holds at most 10', #read_state().recent <= 10, #read_state().recent)
++
++os.exit(failures)
+-- 
+2.54.0
+

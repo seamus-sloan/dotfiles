@@ -19,7 +19,7 @@ const buckets = {}
 for (const f of readdirSync(join(here, "fixtures"))) {
   const key = join(here, "fixtures", f, "answers.md")
   if (!existsSync(key)) continue
-  for (const m of readFileSync(key, "utf8").matchAll(/^\| ([A-Z]\d+) \| (\w+) \|/gm)) buckets[m[1]] = m[2]
+  for (const m of readFileSync(key, "utf8").matchAll(/^\| ([A-Z]+\d+) \| (\w+) \|/gm)) buckets[m[1]] = m[2]
 }
 
 const pts = { FOUND: 1, PARTIAL: 0.5 }
@@ -44,6 +44,7 @@ const rows = runs.sort().map((run) => {
     cell("spec"),
     cell("test"),
     cell("excess"),
+    cell("unplanted"),
     count("VALID"),
     count("FALSE"),
     count("NIT"),
@@ -54,6 +55,6 @@ const rows = runs.sort().map((run) => {
   ]
 })
 
-const head = ["fixture", "reviewer", "bugs", "spec", "tests", "excess", "valid+", "false+", "nits", "cost", "min", "agents", "not FOUND"]
+const head = ["fixture", "reviewer", "bugs", "spec", "tests", "excess", "unplanted", "new valid", "false+", "nits", "cost", "min", "agents", "not FOUND"]
 console.log(`| ${head.join(" | ")} |\n|${head.map(() => "---").join("|")}|`)
 for (const r of rows) console.log(`| ${r.join(" | ")} |`)
