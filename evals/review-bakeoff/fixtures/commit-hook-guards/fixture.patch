@@ -1,0 +1,186 @@
+From eb1157aa0001d4d675fd4c8b062fb592382c57a7 Mon Sep 17 00:00:00 2001
+From: seamus <seamus.sloan@gmail.com>
+Date: Thu, 8 Oct 2026 14:53:15 -0400
+Subject: [PATCH] feat: cap commit subjects and keep ticket trailers through
+ rebases
+
+---
+ .../exact_hooks/executable_commit-msg         | 11 ++++-
+ .../exact_hooks/executable_prepare-commit-msg | 14 ++++--
+ .../private_git/exact_hooks/lib-ticket.sh     | 20 ++++++--
+ tests/git-hooks.sh                            | 47 +++++++++++++++++++
+ 4 files changed, 82 insertions(+), 10 deletions(-)
+ create mode 100644 tests/git-hooks.sh
+
+diff --git a/home/dot_config/private_git/exact_hooks/executable_commit-msg b/home/dot_config/private_git/exact_hooks/executable_commit-msg
+index ff155ca..e823547 100755
+--- a/home/dot_config/private_git/exact_hooks/executable_commit-msg
++++ b/home/dot_config/private_git/exact_hooks/executable_commit-msg
+@@ -1,9 +1,11 @@
+ #!/bin/sh
+ # Global commit-msg hook (installed via dot-files sync.py + core.hooksPath).
+-# Enforces conventional commit subjects: feat / fix / chore / none.
++# Enforces conventional commit subjects: feat / fix / chore / none, at most 72
++# characters long.
+ # One-off bypass: git commit --no-verify
+ 
+ msg_file="$1"
++max_subject=${GIT_MAX_SUBJECT:-72}
+ 
+ subject=$(awk 'NF && $0 !~ /^#/ {print; exit}' "$msg_file")
+ 
+@@ -17,6 +19,13 @@ case "$subject" in
+             echo "  bypass once with: git commit --no-verify" >&2
+             exit 1
+         fi
++        length=$(printf '%s' "$subject" | wc -c | tr -d ' ')
++        if [ "$length" -ge "$max_subject" ]; then
++            echo "commit-msg: subject is $length characters; the limit is $max_subject" >&2
++            echo "  got: $subject" >&2
++            echo "  bypass once with: git commit --no-verify" >&2
++            exit 1
++        fi
+         ;;
+ esac
+ 
+diff --git a/home/dot_config/private_git/exact_hooks/executable_prepare-commit-msg b/home/dot_config/private_git/exact_hooks/executable_prepare-commit-msg
+index 4d61d1b..5c2d11c 100755
+--- a/home/dot_config/private_git/exact_hooks/executable_prepare-commit-msg
++++ b/home/dot_config/private_git/exact_hooks/executable_prepare-commit-msg
+@@ -4,7 +4,8 @@
+ # the commit message. When the ticket uses this repo's own GitHub prefix (DOT-12
+ # inside dot-files) the trailer becomes "Refs: #12" instead, so GitHub resolves
+ # it into the issue. Branches without a ticket prefix (u/sloan/*, main, ...) are
+-# left completely untouched.
++# left completely untouched. GIT_TICKET_SKIP=1 turns the trailer off for one
++# commit.
+ 
+ msg_file="$1"
+ msg_source="$2"
+@@ -14,22 +15,25 @@ hook_dir=$(dirname "$0")
+ . "$hook_dir/lib-ticket.sh"
+ 
+ inject_ticket() {
++    # One-off escape hatch for a commit on a misnamed branch.
++    [ $GIT_TICKET_SKIP = 1 ] && return 0
++
+     # Merge/squash messages carry their own history — don't decorate them.
+     case "$msg_source" in
+         merge | squash) return 0 ;;
+     esac
+ 
+-    # Fails on detached HEAD (rebase etc.) and on branches with no ticket.
++    # Fails on unticketed branches and on a detached HEAD outside a rebase.
+     ticket=$(branch_ticket) || return 0
+ 
+     # This repo's own prefix means the number is a GitHub issue, so reference it
+     # the way GitHub links. Foreign keys (Jira, another repo) go in verbatim.
+     ref=$ticket
+-    mine=$(repo_prefix)
++    mine=$(own_prefix)
+     [ -n "$mine" ] && [ "${ticket%%-*}" = "$mine" ] && ref="#${ticket#*-}"
+ 
+-    # Already referenced anywhere in the message? Don't add it twice.
+-    grep -v '^#' "$msg_file" | grep -qF "$ref" && return 0
++    # Already referenced? Don't add it twice.
++    grep -qF "$ref" "$msg_file" && return 0
+ 
+     git interpret-trailers --in-place --trailer "Refs: $ref" "$msg_file"
+ }
+diff --git a/home/dot_config/private_git/exact_hooks/lib-ticket.sh b/home/dot_config/private_git/exact_hooks/lib-ticket.sh
+index bab39cb..29b6aa5 100644
+--- a/home/dot_config/private_git/exact_hooks/lib-ticket.sh
++++ b/home/dot_config/private_git/exact_hooks/lib-ticket.sh
+@@ -12,7 +12,7 @@ PREFIX_MAP="${XDG_CONFIG_HOME:-$HOME/.config}/git/issue-prefixes"
+ # This repo's GitHub prefix, or nothing when it isn't in the map. Identity comes
+ # from origin's URL rather than the working directory: worktrees live at
+ # ~/worktrees/<repo>/<branch>, where the directory name is the branch.
+-repo_prefix() {
++own_prefix() {
+     [ -f "$PREFIX_MAP" ] || return 1
+     url=$(git config --get remote.origin.url 2>/dev/null)
+     [ -n "$url" ] || return 1
+@@ -31,12 +31,24 @@ known_prefixes() {
+     awk '/^[[:space:]]*(#|$)/ { next } { print $2 }' "$PREFIX_MAP"
+ }
+ 
++# The branch an in-progress rebase is rewriting. HEAD stays detached for the
++# whole rebase, but git records the original branch under the git dir.
++rebase_branch() {
++    git_dir=$(git rev-parse --git-dir 2>/dev/null) || return 1
++    head_file="$git_dir/rebase-merge/head-name"
++    [ -f "$head_file" ] || return 1
++    name=$(cat "$head_file")
++    printf '%s' "${name#refs/heads}"
++}
++
+ # The <PREFIX>-<number> ticket leading the current branch name, if there is one.
+-# Fails on detached HEAD and on unticketed branches (main, u/sloan/foo, ...).
++# Falls back to the branch being rebased while HEAD is detached mid-rebase.
++# Fails on unticketed branches (main, u/sloan/foo, ...) and on a detached HEAD
++# outside a rebase.
+ branch_ticket() {
+     branch=$(git branch --show-current 2>/dev/null)
+-    [ -n "$branch" ] || return 1
++    [ -n "$branch" ] || branch=$(rebase_branch) || return 1
+     ticket=${branch%%/*}
+-    printf '%s' "$ticket" | grep -Eq '^[A-Z]+-[0-9]+$' || return 1
++    printf '%s' "$ticket" | grep -Eq '^[A-Z]+-[0-9]+' || return 1
+     printf '%s' "$ticket"
+ }
+diff --git a/tests/git-hooks.sh b/tests/git-hooks.sh
+new file mode 100644
+index 0000000..0544457
+--- /dev/null
++++ b/tests/git-hooks.sh
+@@ -0,0 +1,47 @@
++#!/bin/sh
++# Exercises the global git hooks in a throwaway repo. Run from the repo root:
++#
++#   sh tests/git-hooks.sh
++#
++# Exits non-zero when any check fails.
++
++set -u
++
++HOOKS="$(cd "$(dirname "$0")/../home/dot_config/private_git/exact_hooks" && pwd)"
++TMP=$(mktemp -d)
++trap 'rm -rf "$TMP"' EXIT
++failures=0
++
++check() {
++    name=$1
++    shift
++    if "$@"; then
++        echo "ok   $name"
++    else
++        echo "FAIL $name"
++        failures=$((failures + 1))
++    fi
++}
++
++# Runs commit-msg on a subject $1 characters long; succeeds when it's accepted.
++subject_of_length() {
++    printf 'feat: %s\n' "$(printf '%*s' $(($1 - 6)) '' | tr ' ' x)" >"$TMP/msg"
++    (cd "$TMP/repo" && sh "$HOOKS/executable_commit-msg" "$TMP/msg") 2>/dev/null
++}
++
++git init -q "$TMP/repo"
++git -C "$TMP/repo" commit -q --allow-empty --no-verify -m "chore: root"
++
++check "50-character subject is accepted" subject_of_length 50
++check "73-character subject is rejected" eval '! subject_of_length 73'
++
++# Rebase fallback: detach HEAD and record the branch the way git does mid-rebase.
++git -C "$TMP/repo" checkout -q -b DOT-7/thing
++git -C "$TMP/repo" checkout -q --detach
++mkdir -p "$TMP/repo/.git/rebase-merge"
++printf 'refs/heads/DOT-7/thing\n' >"$TMP/repo/.git/rebase-merge/head-name"
++ticket=$(cd "$TMP/repo" && . "$HOOKS/lib-ticket.sh" && branch_ticket) || true
++check "rebase fallback finds the branch ticket" [ $? -eq 0 ]
++
++[ "$failures" -eq 0 ] && echo "all hook checks passed"
++exit "$failures"
+-- 
+2.54.0
+

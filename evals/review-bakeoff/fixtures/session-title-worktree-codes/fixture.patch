@@ -1,0 +1,247 @@
+From 3b03f047cf48487081aaa87c62aa2cc6e011f645 Mon Sep 17 00:00:00 2001
+From: seamus <seamus.sloan@gmail.com>
+Date: Thu, 8 Oct 2026 14:56:08 -0400
+Subject: [PATCH] feat: resolve session-title codes per worktree and fold PRs
+ from gh pr view
+
+---
+ .../exact_hooks/executable_repo-code.sh       | 12 ++-
+ .../opencode/plugins/session-title.js         | 82 ++++++++++++-------
+ tests/session-title.test.mjs                  | 68 +++++++++++++++
+ 3 files changed, 128 insertions(+), 34 deletions(-)
+ create mode 100644 tests/session-title.test.mjs
+
+diff --git a/home/dot_claude/exact_hooks/executable_repo-code.sh b/home/dot_claude/exact_hooks/executable_repo-code.sh
+index 4fa359a..4b108e3 100755
+--- a/home/dot_claude/exact_hooks/executable_repo-code.sh
++++ b/home/dot_claude/exact_hooks/executable_repo-code.sh
+@@ -3,8 +3,13 @@
+ # (defaults to $PWD), and prints nothing at all when that directory isn't inside
+ # a git repo.
+ #
++#   repo-code.sh [<dir>] [<worktree>]
++#
+ # The code comes from ~/.claude/repo-codes when the repo has a row there, and is
+-# otherwise guessed from the repo name.
++# otherwise guessed from the repo name. A row whose first column is an absolute
++# path pins a code to that one worktree: when <worktree> is given and has a path
++# row, that row beats the repo-name row. Callers that pass only <dir> (Claude
++# Code's session-title.sh) keep the repo-name behaviour.
+ #
+ # Shared by ~/.claude/hooks/session-title.sh and
+ # ~/.config/opencode/plugins/session-title.js so both agents label a session
+@@ -13,6 +18,7 @@
+ set -euo pipefail
+ 
+ DIR="${1:-$PWD}"
++WORKTREE="$2"
+ CODES="$HOME/.claude/repo-codes"
+ 
+ # Name of the repo containing $1, empty if it isn't a git repo. Uses
+@@ -46,8 +52,8 @@ REPO=$(repo_name "$DIR")
+ 
+ PINNED=""
+ if [ -f "$CODES" ]; then
+-  PINNED=$(awk -v r="$REPO" \
+-    '!/^[[:space:]]*#/ && NF >= 2 && $1 == r { print $2; exit }' "$CODES")
++  PINNED=$(awk -v r="$REPO" -v w="$WORKTREE" \
++    '!/^[[:space:]]*#/ && NF >= 2 && ($1 == r || (w != "" && $1 == w)) { print $2; exit }' "$CODES")
+ fi
+ 
+ if [ -n "$PINNED" ]; then
+diff --git a/home/dot_config/opencode/plugins/session-title.js b/home/dot_config/opencode/plugins/session-title.js
+index 435881e..a159c39 100644
+--- a/home/dot_config/opencode/plugins/session-title.js
++++ b/home/dot_config/opencode/plugins/session-title.js
+@@ -1,4 +1,4 @@
+-import { execFile } from "node:child_process"
++import { exec } from "node:child_process"
+ 
+ /**
+  * session-title.js — the opencode half of the session-title convention.
+@@ -34,33 +34,55 @@ export const SessionTitle = async ({ client, directory, worktree }) => {
+   // "New session - 2026-09-14T17:18:54.195Z - D", so wait for the real title.
+   const PLACEHOLDER = /^New session - \d{4}-\d{2}-\d{2}T[\d:.]+Z$/
+ 
+-  // Resolved once per plugin instance: a plugin is loaded per directory, and the
+-  // repo a directory belongs to does not change under us. The path is built here
+-  // rather than relying on shell expansion, and passed as a single argv entry, so
+-  // neither `~` nor a space in the path needs quoting.
+-  //
++  // A trailing " - <CODE>" that another worktree's code left behind.
++  const CODE_SUFFIX = / - [A-Z]{1,3}$/
++
+   // Deliberately node:child_process and not the plugin's `$`: opencode only
+   // supplies `$` when it is running under Bun (`$: typeof Bun === "undefined" ?
+   // undefined : Bun.$`), and the desktop app runs its server inside Electron's
+   // Node runtime, where `$` is therefore undefined and calling it threw
+   // "$ is not a function" on every session.updated.
+   const script = `${process.env.HOME}/.claude/hooks/repo-code.sh`
+-  let codePromise
+-
+-  /** Short project code for this worktree, or "" when it isn't in a git repo. */
+-  const repoCode = () => {
+-    codePromise ??= new Promise((resolve, reject) => {
+-      execFile(script, [worktree ?? directory], { encoding: "utf8" }, (error, stdout) =>
+-        error ? reject(error) : resolve(stdout.trim()),
+-      )
+-    }).catch(() => {
+-      // Clear the cache on failure. A rejected promise left in `codePromise` is
+-      // re-awaited by every subsequent session.updated, which is what turned one
+-      // missing-script error into a flood of unhandled rejections.
+-      codePromise = undefined
+-      return ""
+-    })
+-    return codePromise
++
++  // repo-code.sh output, per directory. One plugin instance serves every session
++  // opencode opens under it, and those sessions can sit in different worktrees,
++  // so a single cached code per instance labelled them all alike.
++  class CodeCache {
++    #entries = new Map()
++
++    constructor(lookup) {
++      this.lookup = lookup
++    }
++
++    get(dir) {
++      if (!this.#entries.has(dir)) this.#entries.set(dir, this.lookup(dir).catch(() => ""))
++      return this.#entries.get(dir)
++    }
++
++    clear(dir) {
++      this.#entries.delete(dir)
++    }
++
++    get size() {
++      return this.#entries.size
++    }
++  }
++
++  /** Short project code for a directory, or "" when it isn't in a git repo. */
++  const codes = new CodeCache(
++    (dir) =>
++      new Promise((resolve, reject) => {
++        exec(`${script} ${dir} ${dir}`, { encoding: "utf8" }, (error, stdout) =>
++          error ? reject(error) : resolve(stdout.trim()),
++        )
++      }),
++  )
++
++  /** The title without a trailing " - <CODE>", so a stale code is replaced, not stacked. */
++  const stripCode = (title) => {
++    const at = title.search(CODE_SUFFIX)
++    if (!at) return title
++    return title.slice(0, at)
+   }
+ 
+   // Titles this plugin has written, keyed by session. session.update publishes
+@@ -102,24 +124,22 @@ export const SessionTitle = async ({ client, directory, worktree }) => {
+       // Our own write coming back around.
+       if (written.get(session.id) === session.title) return
+ 
+-      const code = await repoCode()
++      const code = await codes.get(worktree ?? session.directory)
+       if (!code) return
+ 
+-      const suffix = ` - ${code}`
+-      const base = session.title.replace(PR_PREFIX, "")
++      const base = stripCode(session.title.replace(PR_PREFIX, ""))
+       if (PLACEHOLDER.test(base)) return
+-      if (base.endsWith(suffix)) return
+ 
+       const number = folded.get(session.id)
+-      await setTitle(session, `${number ? `#${number} ` : ""}${base}${suffix}`)
++      await setTitle(session, `${number ? `#${number} ` : ""}${base} - ${code}`)
+     },
+ 
+-    // A PR was opened: fold its number into the title. Scanning the whole tool
+-    // output rather than a named field keeps this working if the bash result
+-    // shape shifts.
++    // A PR was opened or viewed: fold its number into the title. Scanning the
++    // whole tool output rather than a named field keeps this working if the bash
++    // result shape shifts.
+     "tool.execute.after": async (input, output) => {
+       if (input.tool !== "bash") return
+-      if (!/\bgh\s+pr\s+create\b/.test(String(input.args?.command ?? ""))) return
++      if (!/\bgh\s+pr\s+(create|view)\b/.test(String(input.args?.command ?? ""))) return
+ 
+       const number = output.output?.match(PR_URL)?.[1]
+       if (!number) return
+diff --git a/tests/session-title.test.mjs b/tests/session-title.test.mjs
+new file mode 100644
+index 0000000..9e6ec52
+--- /dev/null
++++ b/tests/session-title.test.mjs
+@@ -0,0 +1,68 @@
++// Drives the opencode session-title plugin through its hooks with a fake client
++// and a stub repo-code.sh. Run from the repo root:
++//
++//   node --test tests/*.test.mjs
++import assert from "node:assert/strict"
++import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
++import { tmpdir } from "node:os"
++import { join } from "node:path"
++import { after, before, test } from "node:test"
++
++const home = mkdtempSync(join(tmpdir(), "session-title-"))
++let SessionTitle
++
++before(async () => {
++  mkdirSync(join(home, ".claude/hooks"), { recursive: true })
++  // Stub lookup: the code is the directory's last path segment, uppercased.
++  writeFileSync(join(home, ".claude/hooks/repo-code.sh"), '#!/bin/sh\nbasename "$1" | tr a-z A-Z\n', {
++    mode: 0o755,
++  })
++  process.env.HOME = home
++  ;({ SessionTitle } = await import("../home/dot_config/opencode/plugins/session-title.js"))
++})
++
++after(() => rmSync(home, { recursive: true, force: true }))
++
++/** A plugin wired to a fake client that records every title it is asked to set. */
++const plugin = async ({ directory = "/w/root", worktree } = {}) => {
++  const sessions = new Map()
++  const titles = []
++  const client = {
++    session: {
++      update: async ({ path, body }) => {
++        titles.push(body.title)
++        sessions.get(path.id).title = body.title
++      },
++      get: async ({ path }) => ({ data: sessions.get(path.id) }),
++    },
++  }
++  const hooks = await SessionTitle({ client, directory, worktree })
++  const updated = (session) => {
++    sessions.set(session.id, session)
++    return hooks.event({ event: { type: "session.updated", properties: { info: session } } })
++  }
++  return { hooks, titles, updated }
++}
++
++test("replaces another worktree's code instead of stacking a second one", async () => {
++  const { titles, updated } = await plugin()
++  await updated({ id: "s1", title: "Rename Sessions - X", directory: "/w/d" })
++  assert.deepEqual(titles, ["Rename Sessions - D"])
++})
++
++test("resolves the code per session directory", async () => {
++  const { titles, updated } = await plugin()
++  await updated({ id: "s1", title: "Fix Build - X", directory: "/w/ab" })
++  await updated({ id: "s2", title: "Add Tests - X", directory: "/w/cd" })
++  assert.deepEqual(titles, ["Fix Build - AB", "Add Tests - CD"])
++})
++
++test("folds the PR number printed by gh pr view", async () => {
++  const { hooks, titles, updated } = await plugin()
++  await updated({ id: "s1", title: "Rename Sessions - X", directory: "/w/d" })
++  await hooks["tool.execute.after"](
++    { tool: "bash", sessionID: "s1", args: { command: "gh pr view" } },
++    { output: "View this pull request on GitHub: https://github.com/o/r/pull/42" },
++  )
++  assert.equal(titles.at(-1), "#42 Rename Sessions - D")
++})
+-- 
+2.54.0
+
