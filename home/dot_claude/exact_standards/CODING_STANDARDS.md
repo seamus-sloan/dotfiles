@@ -16,7 +16,6 @@ Between these files, a language file beats [testing.md](testing.md) on syntax: n
 | Task | Read |
 |---|---|
 | Writing or changing any test | [testing.md](testing.md), then the language file |
-| Any behaviour change | the `tdd` skill: test-first is the default, not an opt-in |
 
 | Language | File |
 |---|---|
