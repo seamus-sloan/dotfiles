@@ -91,6 +91,13 @@ wt remove                    # drop the merged worktree and its local branch
 wt switch ^ && git pull      # default-branch worktree, updated
 ```
 
+**Stacked PRs.** Merge bottom-up. When another open PR uses this PR's branch as its base, deleting that branch closes the dependent PR instead of retargeting it, so for every PR but the top of the stack:
+
+1. Merge without deleting: `gh pr merge <pr> --squash`.
+2. Retarget the next PR: `gh pr edit <next> --base main`.
+3. Only then delete the merged branch: `gh api -X DELETE "repos/<owner>/<repo>/git/refs/heads/<branch>"`.
+4. Merge `main` into the next branch (a merge, never a rebase) and push, so its diff shows only its own changes. The squash leaves that branch holding older copies of lines `main` now has; resolve those conflicts toward the branch.
+
 **Confirm the issue closed.** If this PR was meant to resolve a tracked issue, verify the merge auto-closed it (the `Closes #<n>` line from step 1 does this):
 
 ```bash
@@ -115,4 +122,5 @@ Print a compact end-state summary: PR URL, merge status (merged / stopped-before
 - **Never merge with a deferral or push-back on a person's comment awaiting the user.** Those are the user's decisions; auto-merge is suspended until they're cleared. Bot comments dismissed by `resolve-pr-comments` don't block.
 - **Never merge over a red or falsely-skipped required check.** A `SKIPPED` E2E check on a UI diff is a missing label, not a pass.
 - **Never request Copilot as a reviewer** — it's auto-attached.
+- **Never delete a merged branch another open PR still uses as its base.** Retarget that PR first, or GitHub closes it.
 - **Never invent a review or CI state.** Poll the real API; if a signal never arrives within the timeout, say so and act on the documented fallback, don't assume.
