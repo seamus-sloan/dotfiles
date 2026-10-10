@@ -307,7 +307,7 @@ for (( k = 1; k <= ${#cells}; k += 2 )); do
   fi
 done
 
-# Title spans two columns and limits the other two; narrow grids stack them.
+# Title spans two columns and the rate limits the other two; narrow grids stack them.
 title_v=""
 case $ncols in
   4)
