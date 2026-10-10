@@ -56,5 +56,6 @@
   - **Before rewriting an existing PR description, compare it with the copy saved when you last wrote it** (`open-pr` §8). If it changed or there's no copy, show me and ask before overwriting.
 - Replies to PR review comments are minimal: a fixed comment gets just the commit SHA, then the thread is resolved (see `resolve-pr-comments`).
 - **My coding standards live in `~/.claude/standards/`.** Before writing or changing any test, read `~/.claude/standards/CODING_STANDARDS.md` and the files it names for the task.
+- **Behaviour changes are test-first by default.** Follow the `tdd` skill for every new feature, bug fix, and refactor without being asked. Skip it only for the cases that skill lists, or when I opt out.
 
 @RTK.md
