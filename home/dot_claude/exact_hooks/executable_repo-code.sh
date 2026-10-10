@@ -15,9 +15,7 @@ set -euo pipefail
 DIR="${1:-$PWD}"
 CODES="$HOME/.claude/repo-codes"
 
-# Name of the repo containing $1, empty if it isn't a git repo. Uses
-# --git-common-dir so a worktree at ~/worktrees/<repo>/<branch> resolves to
-# <repo> rather than to the branch-named directory it actually sits in.
+# Repo containing $1, or empty; --git-common-dir maps a worktree to its repo.
 repo_name() {
   local dir="$1" gcd abs
   [ -d "$dir" ] || return 0
@@ -27,8 +25,7 @@ repo_name() {
   basename "$(dirname "$abs")"
 }
 
-# Initials of the hyphen/underscore/dot-separated words, uppercased, capped at
-# three characters: mock-controller → MC, platform → P, drone-userland → DU.
+# Up to three initials of the name's words: mock-controller → MC.
 guess_code() {
   printf '%s' "$1" | tr '_.' '--' | awk -F'-' '{
     out = ""

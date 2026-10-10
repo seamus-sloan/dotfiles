@@ -29,18 +29,7 @@ SESSION=$(jq -r '.session_id // ""' <<<"$INPUT")
 CWD=$(jq -r '.cwd // ""' <<<"$INPUT")
 SOURCE=$(jq -r '.hook_source // ""' <<<"$INPUT")
 
-# opencode runs these hooks too, via oh-my-openagent's claude-code-hooks bridge,
-# which stamps every event it dispatches with hook_source "opencode-plugin".
-# Nothing below applies there, on both halves:
-#
-#   - The instruction is unactionable. set_session_title is a CCD-only MCP tool,
-#     so asking for it in opencode made the model open every session announcing a
-#     rename it had no lever to perform, then reach for this script as a fallback.
-#   - The rename is already handled. ~/.config/opencode/plugins/session-title.js
-#     appends the same repo-code.sh suffix to the title opencode's own title agent
-#     generates, deterministically, without involving the model at all.
-#
-# Claude Code sends no hook_source, so it falls straight through unchanged.
+# opencode can't call set_session_title, and its own plugin titles sessions.
 if [ "$SOURCE" = "opencode-plugin" ]; then
   exit 0
 fi
@@ -61,18 +50,14 @@ inject() {
   }'
 }
 
-# Short project code for the repo containing $1, empty when $1 isn't in a repo.
-# The lookup lives in repo-code.sh so opencode can share it.
+# Project code for the repo containing $1, shared with opencode via repo-code.sh.
 repo_code() {
   "$HOME/.claude/hooks/repo-code.sh" "$1" 2>/dev/null || true
 }
 
 case "$EVENT" in
 
-  # First prompt of a session: ask for a title built from the objective. The
-  # state file doubles as the once-only gate — it appears when the model calls
-  # set_session_title, so a session that never got named asks again next prompt
-  # instead of silently keeping the app's auto-generated title.
+  # Ask every prompt until set_session_title writes the state file.
   UserPromptSubmit)
     [ -f "$STATE" ] && exit 0
     CODE=$(repo_code "$CWD")
@@ -93,10 +78,7 @@ remarking on it."
     TOOL=$(jq -r '.tool_name // ""' <<<"$INPUT")
     case "$TOOL" in
 
-      # Record what the title was set to, so the PR step below can rebuild the
-      # full string without needing it to still be in the model's context. Any
-      # "#123 " prefix is stripped first — otherwise opening a second PR would
-      # nest prefixes into "#124 #123 Rename Sessions - D".
+      # Save the title minus any "#123 " prefix so the PR step can rebuild it.
       *set_session_title)
         TITLE=$(jq -r '.tool_input.title // ""' <<<"$INPUT")
         [ -n "$TITLE" ] || exit 0
@@ -110,16 +92,14 @@ remarking on it."
         CMD=$(jq -r '.tool_input.command // ""' <<<"$INPUT")
         grep -qE '\bgh[[:space:]]+pr[[:space:]]+create\b' <<<"$CMD" || exit 0
 
-        # gh prints the PR URL on success. Scanning the whole response rather
-        # than a named field keeps this working if the Bash result shape shifts.
+        # Scan the whole response so a change in the result's shape can't hide the URL.
         URL=$(jq -r '.tool_response | tostring' <<<"$INPUT" \
           | grep -oE 'https://github\.com/[^/]+/[^/]+/pull/[0-9]+' \
           | head -1 || true)
         [ -n "$URL" ] || exit 0
         NUM=${URL##*/}
 
-        # Don't re-ask when this PR number is already folded in (retried command,
-        # `gh pr create` run twice against the same branch).
+        # Already folded in, e.g. by a retried `gh pr create`.
         [ -f "$STATE.pr" ] && [ "$(cat "$STATE.pr")" = "$NUM" ] && exit 0
         mkdir -p "$STATE_DIR"
         printf '%s\n' "$NUM" >"$STATE.pr"
