@@ -24,27 +24,28 @@ A **boundary** is anything outside the process's own memory: network, database, 
 - **Heavy mocking is a design signal.** A unit test that needs it is testing code that mixes logic and I/O: split the code instead of mocking deeper.
 - **End-to-end tests** (whole system, browser or device) only where the repo already has a suite, or when I ask.
 
-For a client that sends `POST /v1/track`: validating the coordinates is **unit**; the request it sends and how it reads the response is **integration**, against a local server.
+For a client that sends `POST /v1/orders`: parsing the price is **unit**; the request it sends and how it reads the response is **integration**, against a local server.
 
 ## Name it as a sentence
 
 A test's name is a path: **subject → group → behaviour**.
 
-- **Subject:** the thing under test, exactly as the code or API names it: `POST /v1/track`, `parseCoordinates`. The only part that may contain symbols. One subject per block, never an `A -> B` mapping.
+- **Subject:** the thing under test, exactly as the code or API names it: `POST /v1/orders`, `parsePrice`. The only part that may contain symbols. One subject per block, never an `A -> B` mapping.
 - **Group:** optional, at most one level. A short lowercase noun phrase for the aspect under test: `contract matching`, `validation`, `retries`.
-- **Behaviour:** lowercase, opening with a present-tense verb, outcome first and condition second: `returns valid response from valid request`, `rejects latitude above 90`. No punctuation, no "should", no "correctly". One behaviour: a name that needs "and" is two tests.
+- **Behaviour:** lowercase, opening with a present-tense verb, outcome first and condition second: `returns created order from valid request`, `rejects negative amount`. No punctuation, no "should", no "correctly". One behaviour: a name that needs "and" is two tests.
 
 | | Subject | Group | Behaviour |
 |---|---|---|---|
-| TypeScript | `describe('POST /v1/track')` | `describe('contract matching')` | `it('returns valid response from valid request')` |
-| Go | `TestPostTrack_` | none | `ReturnsValidResponseFromValidRequest` |
-| Rust | `mod post_track` | `mod contract_matching` | `fn returns_valid_response_from_valid_request` |
+| TypeScript | `describe('POST /v1/orders')` | `describe('contract matching')` | `it('returns created order from valid request')` |
+| Go | `TestPostOrders_` | none | `ReturnsCreatedOrderFromValidRequest` |
+| Rust | `mod post_orders` | `mod contract_matching` | `fn returns_created_order_from_valid_request` |
 
 ## Shape of a test
 
 - **Assert what a caller can observe:** return values, responses, errors, state read back through the public interface, messages sent across a boundary. Never private fields, internal call counts, or a side channel like querying the table a repository wraps.
 - **Expected values come from an independent source:** a literal, a worked example, the spec. Never recompute them the way the code does, or the test can't fail.
 - **Keep setup visible.** Build inputs in the test. Move setup into a hook or helper once two tests share it, and keep hooks at the subject level.
+- **Helpers go at the top of the file**, after the imports and before the first test.
 - **Parameterise** when two or more cases share setup and assertion and differ only in data. Name each case by its condition.
 - **Tests are independent:** no order dependence, no shared mutable state, and every test undoes what it sets up.
 - **No sleeps.** Wait on a signal (a promise, a channel, a poll with a deadline) or control time with a fake clock.
@@ -64,13 +65,13 @@ A test's name is a path: **subject → group → behaviour**.
 
   ```ts
   // Easy to double
-  function sendTrack(point: Point, http: HttpClient) {
-    return http.post('/v1/track', point);
+  function createOrder(order: NewOrder, http: HttpClient) {
+    return http.post('/v1/orders', order);
   }
 
   // Needs module patching
-  function sendTrack(point: Point) {
-    return new HttpClient(process.env.API_URL).post('/v1/track', point);
+  function createOrder(order: NewOrder) {
+    return new HttpClient(process.env.API_URL).post('/v1/orders', order);
   }
   ```
 

@@ -23,11 +23,11 @@ Follow the crate's layout. Where it has none, keep tests out of the source file,
 
 ## Naming
 
-- The function name is the behaviour, in snake_case, with no `test_` prefix: `fn returns_valid_response_from_valid_request()`.
-- Subject and group are nested modules, each opening with `use super::*;`, so the test path reads as the sentence: `post_track::contract_matching::returns_valid_response_from_valid_request`.
-- **Subject:** the code or API name in snake_case: `POST /v1/track` → `post_track`, `TrackClient::send` → `track_client_send`.
-- In `tests/`, the file is the subject (`tests/post_track.rs`) and groups are modules inside it.
-- Parameterise with `rstest`'s `#[case::latitude_above_90("91,0")]` where the crate has it. Otherwise write one function per case.
+- The function name is the behaviour, in snake_case, with no `test_` prefix: `fn returns_created_order_from_valid_request()`.
+- Subject and group are nested modules, each opening with `use super::*;`, so the test path reads as the sentence: `post_orders::contract_matching::returns_created_order_from_valid_request`.
+- **Subject:** the code or API name in snake_case: `POST /v1/orders` → `post_orders`, `OrderClient::create` → `order_client_create`.
+- In `tests/`, the file is the subject (`tests/post_orders.rs`) and groups are modules inside it.
+- Parameterise with `rstest`'s `#[case::negative_amount("-1.00")]` where the crate has it. Otherwise write one function per case.
 
 ## Doubles and determinism
 
@@ -39,40 +39,28 @@ Follow the crate's layout. Where it has none, keep tests out of the source file,
 ## Example: unit
 
 ```rust
-// src/coordinates/tests.rs, declared by `#[cfg(test)] mod tests;` in src/coordinates.rs
+// src/price/tests.rs, declared by `#[cfg(test)] mod tests;` in src/price.rs
 use super::*;
 
-mod parse_coordinates {
+mod parse_price {
     use super::*;
 
     mod validation {
         use super::*;
 
         #[test]
-        fn returns_coordinates_from_valid_input() {
-            assert_eq!(
-                parse_coordinates("40.7,-74"),
-                Ok(Coordinates {
-                    latitude: 40.7,
-                    longitude: -74.0
-                })
-            );
+        fn returns_cents_from_valid_price() {
+            assert_eq!(parse_price("12.50"), Ok(1250));
         }
 
         #[test]
-        fn rejects_latitude_above_90() {
-            assert_eq!(
-                parse_coordinates("91,0"),
-                Err(TrackError::InvalidCoordinates)
-            );
+        fn rejects_negative_amount() {
+            assert_eq!(parse_price("-1.00"), Err(OrderError::InvalidPrice));
         }
 
         #[test]
-        fn rejects_missing_longitude() {
-            assert_eq!(
-                parse_coordinates("40.7"),
-                Err(TrackError::InvalidCoordinates)
-            );
+        fn rejects_more_than_two_decimals() {
+            assert_eq!(parse_price("1.005"), Err(OrderError::InvalidPrice));
         }
     }
 }
@@ -81,52 +69,58 @@ mod parse_coordinates {
 ## Example: integration
 
 ```rust
-// tests/post_track.rs
+// tests/post_orders.rs
+use orders::{NewOrder, Order, OrderClient};
 use serde_json::json;
-use track::{Coordinates, TrackClient, TrackResponse};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-const NEW_YORK: Coordinates = Coordinates {
-    latitude: 40.7,
-    longitude: -74.0,
-};
-
-mod contract_matching {
-    use super::*;
-
-    #[tokio::test]
-    async fn returns_valid_response_from_valid_request() {
-        let server = start_fake_api().await;
-        let client = TrackClient::new(&server.uri(), "test-key");
-
-        let response = client.track(NEW_YORK).await;
-
-        let expected = TrackResponse {
-            status: "ok".into(),
-        };
-        assert_eq!(response.unwrap(), expected);
-    }
-
-    #[tokio::test]
-    async fn sends_api_key_as_bearer_token() {
-        let server = start_fake_api().await;
-        let client = TrackClient::new(&server.uri(), "test-key");
-
-        client.track(NEW_YORK).await.unwrap();
-
-        let received = server.received_requests().await.unwrap();
-        assert_eq!(received[0].headers["authorization"], "Bearer test-key");
+fn two_books() -> NewOrder {
+    NewOrder {
+        sku: "BOOK-1".into(),
+        quantity: 2,
     }
 }
 
 async fn start_fake_api() -> MockServer {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
-        .and(path("/v1/track"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "status": "ok" })))
+        .and(path("/v1/orders"))
+        .respond_with(
+            ResponseTemplate::new(201)
+                .set_body_json(json!({ "id": "order-1", "status": "pending" })),
+        )
         .mount(&server)
         .await;
     server
+}
+
+mod contract_matching {
+    use super::*;
+
+    #[tokio::test]
+    async fn returns_created_order_from_valid_request() {
+        let server = start_fake_api().await;
+        let client = OrderClient::new(&server.uri(), "test-key");
+
+        let order = client.create(two_books()).await;
+
+        let expected = Order {
+            id: "order-1".into(),
+            status: "pending".into(),
+        };
+        assert_eq!(order.unwrap(), expected);
+    }
+
+    #[tokio::test]
+    async fn sends_api_key_as_bearer_token() {
+        let server = start_fake_api().await;
+        let client = OrderClient::new(&server.uri(), "test-key");
+
+        client.create(two_books()).await.unwrap();
+
+        let received = server.received_requests().await.unwrap();
+        assert_eq!(received[0].headers["authorization"], "Bearer test-key");
+    }
 }
 ```
