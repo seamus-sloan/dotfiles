@@ -55,5 +55,6 @@
   - Nothing but the change and how to verify it: review rounds, finding tallies, test-run narration, and other process notes are reported to me in chat, never put in the PR.
   - **Before rewriting an existing PR description, compare it with the copy saved when you last wrote it** (`open-pr` §8). If it changed or there's no copy, show me and ask before overwriting.
 - Replies to PR review comments are minimal: a fixed comment gets just the commit SHA, then the thread is resolved (see `resolve-pr-comments`).
+- **My coding standards live in `~/.claude/standards/`.** Before writing or changing any test, read `~/.claude/standards/CODING_STANDARDS.md` and the files it names for the task.
 
 @RTK.md
