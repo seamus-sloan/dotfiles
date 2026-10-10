@@ -19,7 +19,7 @@ A **boundary** is anything outside the process's own memory: network, database, 
 - **Test logic at the unit level, and each boundary for real, once.** Don't re-run unit-level branches through an integration test.
 - **Services I don't run**, like a third-party API, are replaced by a local server that speaks their contract. The HTTP stack in between stays real.
 - **Heavy mocking is a design signal.** A unit test that needs it is testing code that mixes logic and I/O: split the code instead of mocking deeper.
-- **Two kinds of API test:** an integration test runs this code's HTTP handling against a local stand-in; an end-to-end API test calls the running app the way a client would.
+- **An API's behaviour is tested by its own service**, in integration tests against a real server and database. End-to-end suites call the API only to set up, clean up, or read back data, never as the thing under test.
 
 For a client that sends `POST /v1/orders`: parsing the price is **unit**; the request it sends and how it reads the response is **integration**, against a local server.
 
