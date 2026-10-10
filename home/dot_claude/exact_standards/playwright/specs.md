@@ -11,7 +11,7 @@ Part of the [Playwright standard](../playwright.md).
 - `toBeVisible` for presence. `toBeInViewport` only when scrolling is the behaviour under test.
 - Run independent waits together with `Promise.all`. Use `expect.poll` with a `message` for values that settle over time.
 - No `waitForTimeout` and no retry loops. A wait that truly needs time disables `playwright/no-wait-for-timeout` on that one line, with the reason as the comment.
-- Stub routes only to force a state the backend can't easily produce, like an empty list or a server error, through a page-object method that calls `page.route`.
+- In browser tests, stub routes with `page.route` only to force a state the backend can't easily produce, like an empty list or a server error, and only through a page-object method.
 
 ```ts
 // tests/orders/orders.spec.ts

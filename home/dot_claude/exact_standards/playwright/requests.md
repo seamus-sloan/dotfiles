@@ -12,6 +12,7 @@ Part of the [Playwright standard](../playwright.md).
 // apiRequests/BaseRequests.ts
 import type { APIRequestContext, APIResponse } from '@playwright/test';
 
+/** Thin wrapper over Playwright's APIRequestContext that returns raw responses. */
 export abstract class BaseRequests {
   constructor(protected readonly request: APIRequestContext) {}
 

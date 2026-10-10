@@ -42,6 +42,7 @@ await response;
 // pages/BasePage.ts
 import { expect, type Locator, type Page } from '@playwright/test';
 
+/** Navigation and the displayed check that every page object shares. */
 export abstract class BasePage {
   protected abstract readonly path: string;
 

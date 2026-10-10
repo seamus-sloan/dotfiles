@@ -30,12 +30,14 @@ A test's name is a path: **subject → group → behaviour**.
 - **Subject:** the thing under test, exactly as the code or API names it: `POST /v1/orders`, `parsePrice`. The only part that may contain symbols. One subject per block, never an `A -> B` mapping.
 - **Group:** optional, at most one level. A short lowercase noun phrase for the aspect under test: `contract matching`, `validation`, `retries`.
 - **Behaviour:** lowercase, opening with a present-tense verb, outcome first and condition second: `returns created order from valid request`, `rejects negative amount`. No punctuation, no "should", no "correctly". One behaviour: a name that needs "and" is two tests.
+- **Playwright is the exception:** a test title is the user's action, in the imperative: `cancel a pending order`. See [playwright/specs.md](playwright/specs.md).
 
 | | Subject | Group | Behaviour |
 |---|---|---|---|
 | TypeScript | `describe('POST /v1/orders')` | `describe('contract matching')` | `it('returns created order from valid request')` |
 | Go | `TestPostOrders_` | none | `ReturnsCreatedOrderFromValidRequest` |
 | Rust | `mod post_orders` | `mod contract_matching` | `fn returns_created_order_from_valid_request` |
+| Playwright | `test.describe('orders page')` | `test.describe('cancellation')` | `test('cancel a pending order')` |
 
 ## Shape of a test
 

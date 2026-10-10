@@ -1,6 +1,6 @@
 # TypeScript
 
-How [testing.md](../testing.md) is spelled in TypeScript and JavaScript.
+How [testing.md](../testing.md) is spelled in TypeScript and JavaScript unit and integration tests. Playwright end-to-end tests follow [playwright.md](../playwright.md) instead.
 
 ## Runner
 
