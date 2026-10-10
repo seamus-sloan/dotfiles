@@ -10,9 +10,9 @@ With no existing suite, start one in `e2e/` at the repo root:
 e2e/
 ├── playwright.config.ts
 ├── auth/          storage-state paths shared by config and setup
-├── pages/         basePage.ts, <name>Page.ts
-├── components/    baseComponent.ts, <name>Component.ts
-├── apiRequests/   baseRequests.ts, <area>Requests.ts
+├── pages/         BasePage.ts, <Name>Page.ts
+├── components/    BaseComponent.ts, <Name>Component.ts
+├── apiRequests/   BaseRequests.ts, <Area>Requests.ts
 ├── fixtures/      <area>Fixtures.ts
 ├── data/          types and builders for test data
 └── tests/
@@ -21,8 +21,9 @@ e2e/
     └── api/       <name>.api.ts
 ```
 
-- File names are camelCase plus their role: `ordersPage.ts`, `orderCardComponent.ts`, `ordersRequests.ts`, `ordersFixtures.ts`.
-- One class per file, default-exported and named after the file in PascalCase.
+- A file holding a class is PascalCase, named exactly for its class: `OrdersPage.ts`, `OrderCardComponent.ts`, `OrdersRequests.ts`.
+- Every other file is camelCase: specs (`orders.spec.ts`), fixtures (`ordersFixtures.ts`), data, and config.
+- One class per file, default-exported.
 - `.spec.ts` tests run in a browser. `.api.ts` tests run in their own project, with no browser.
 
 ## Page objects
@@ -37,7 +38,7 @@ e2e/
 - Pages never call APIs or build test data. That belongs to request objects and `data/`.
 
 ```ts
-// pages/basePage.ts
+// pages/BasePage.ts
 import type { Locator, Page } from '@playwright/test';
 
 export default abstract class BasePage {
@@ -57,12 +58,12 @@ export default abstract class BasePage {
 ```
 
 ```ts
-// pages/ordersPage.ts
+// pages/OrdersPage.ts
 import { expect, type Locator, type Page } from '@playwright/test';
-import HeaderComponent from '../components/headerComponent';
-import OrderCardComponent from '../components/orderCardComponent';
+import HeaderComponent from '../components/HeaderComponent';
+import OrderCardComponent from '../components/OrderCardComponent';
 import type { NewOrder, Order } from '../data/orders';
-import BasePage from './basePage';
+import BasePage from './BasePage';
 
 export default class OrdersPage extends BasePage {
   static override get path(): string {
@@ -117,9 +118,9 @@ export default class OrdersPage extends BasePage {
 - A component that repeats takes a `root` locator and builds every locator from it. The page hands out one per item: `orderCard(id)`.
 
 ```ts
-// components/headerComponent.ts
+// components/HeaderComponent.ts
 import type { Locator, Page } from '@playwright/test';
-import BaseComponent from './baseComponent';
+import BaseComponent from './BaseComponent';
 
 export default class HeaderComponent extends BaseComponent {
   readonly signOutButton: Locator;
@@ -136,9 +137,9 @@ export default class HeaderComponent extends BaseComponent {
 ```
 
 ```ts
-// components/orderCardComponent.ts
+// components/OrderCardComponent.ts
 import type { Locator, Page } from '@playwright/test';
-import BaseComponent from './baseComponent';
+import BaseComponent from './BaseComponent';
 
 export default class OrderCardComponent extends BaseComponent {
   readonly statusText: Locator;
@@ -168,7 +169,7 @@ export default class OrderCardComponent extends BaseComponent {
 - Specs use them to seed and clean up data. API tests use them as the subject.
 
 ```ts
-// apiRequests/baseRequests.ts
+// apiRequests/BaseRequests.ts
 import type { APIRequestContext, APIResponse } from '@playwright/test';
 
 export default abstract class BaseRequests {
@@ -189,10 +190,10 @@ export default abstract class BaseRequests {
 ```
 
 ```ts
-// apiRequests/ordersRequests.ts
+// apiRequests/OrdersRequests.ts
 import type { APIResponse } from '@playwright/test';
 import type { NewOrder } from '../data/orders';
-import BaseRequests from './baseRequests';
+import BaseRequests from './BaseRequests';
 
 export default class OrdersRequests extends BaseRequests {
   getOrders(): Promise<APIResponse> {
@@ -218,8 +219,8 @@ export default class OrdersRequests extends BaseRequests {
 ```ts
 // fixtures/ordersFixtures.ts
 import { test as base, expect } from '@playwright/test';
-import OrdersRequests from '../apiRequests/ordersRequests';
-import OrdersPage from '../pages/ordersPage';
+import OrdersRequests from '../apiRequests/OrdersRequests';
+import OrdersPage from '../pages/OrdersPage';
 
 type OrdersFixtures = {
   ordersPage: OrdersPage;
@@ -279,8 +280,8 @@ export default defineConfig({
 // tests/setup/customer.setup.ts
 import { test as setup } from '@playwright/test';
 import { CUSTOMER_STORAGE_STATE } from '../../auth/storageStates';
-import LoginPage from '../../pages/loginPage';
-import OrdersPage from '../../pages/ordersPage';
+import LoginPage from '../../pages/LoginPage';
+import OrdersPage from '../../pages/OrdersPage';
 
 setup('sign in as a customer', async ({ page }) => {
   const loginPage = new LoginPage(page);
@@ -308,7 +309,7 @@ setup('sign in as a customer', async ({ page }) => {
 // tests/orders/orders.spec.ts
 import { buildOrder, type Order } from '../../data/orders';
 import { expect, test } from '../../fixtures/ordersFixtures';
-import LoginPage from '../../pages/loginPage';
+import LoginPage from '../../pages/LoginPage';
 
 test.describe('orders page', () => {
   test.describe('new orders', () => {
