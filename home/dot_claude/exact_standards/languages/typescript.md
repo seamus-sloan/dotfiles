@@ -18,7 +18,6 @@ How [testing.md](../testing.md) is spelled in TypeScript and JavaScript.
 - `beforeEach` and `afterEach` sit in the subject block, and `afterEach` undoes everything `beforeEach` did.
 - `beforeAll` only for setup too slow to repeat per test.
 - Parameterise with `it.each`, completing the sentence with the case: `it.each(cases)('rejects %s', …)`.
-- Helper functions go below the outer `describe`.
 
 ## Doubles and determinism
 
@@ -30,21 +29,21 @@ How [testing.md](../testing.md) is spelled in TypeScript and JavaScript.
 ## Example: unit
 
 ```ts
-// src/coordinates.test.ts
+// src/price.test.ts
 import { describe, expect, it } from 'vitest';
-import { InvalidCoordinatesError, parseCoordinates } from './coordinates';
+import { InvalidPriceError, parsePrice } from './price';
 
-describe('parseCoordinates', () => {
+describe('parsePrice', () => {
   describe('validation', () => {
-    it('returns coordinates from valid input', () => {
-      expect(parseCoordinates('40.7,-74')).toEqual({ latitude: 40.7, longitude: -74 });
+    it('returns cents from valid price', () => {
+      expect(parsePrice('12.50')).toBe(1250);
     });
 
     it.each([
-      ['latitude above 90', '91,0'],
-      ['missing longitude', '40.7'],
+      ['negative amount', '-1.00'],
+      ['more than two decimals', '1.005'],
     ])('rejects %s', (_condition, input) => {
-      expect(() => parseCoordinates(input)).toThrow(InvalidCoordinatesError);
+      expect(() => parsePrice(input)).toThrow(InvalidPriceError);
     });
   });
 });
@@ -53,46 +52,16 @@ describe('parseCoordinates', () => {
 ## Example: integration
 
 ```ts
-// integration/track.test.ts
+// integration/orders.test.ts
 import { createServer, type IncomingHttpHeaders, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { TrackClient } from '../src/trackClient';
-
-describe('POST /v1/track', () => {
-  let received: IncomingHttpHeaders[];
-  let server: Server;
-  let client: TrackClient;
-
-  beforeEach(async () => {
-    received = [];
-    server = await startFakeApi(received);
-    client = new TrackClient({ baseUrl: urlOf(server), apiKey: 'test-key' });
-  });
-
-  afterEach(async () => {
-    await stop(server);
-  });
-
-  describe('contract matching', () => {
-    it('returns valid response from valid request', async () => {
-      const response = await client.track({ latitude: 40.7, longitude: -74 });
-
-      expect(response).toEqual({ status: 'ok' });
-    });
-
-    it('sends api key as bearer token', async () => {
-      await client.track({ latitude: 40.7, longitude: -74 });
-
-      expect(received[0].authorization).toBe('Bearer test-key');
-    });
-  });
-});
+import { OrderClient } from '../src/orderClient';
 
 async function startFakeApi(received: IncomingHttpHeaders[]): Promise<Server> {
   const server = createServer((req, res) => {
     received.push(req.headers);
-    res.writeHead(200, { 'content-type': 'application/json' }).end('{"status":"ok"}');
+    res.writeHead(201, { 'content-type': 'application/json' }).end('{"id":"order-1","status":"pending"}');
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   return server;
@@ -105,4 +74,34 @@ function urlOf(server: Server): string {
 function stop(server: Server): Promise<void> {
   return new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
 }
+
+describe('POST /v1/orders', () => {
+  let received: IncomingHttpHeaders[];
+  let server: Server;
+  let client: OrderClient;
+
+  beforeEach(async () => {
+    received = [];
+    server = await startFakeApi(received);
+    client = new OrderClient({ baseUrl: urlOf(server), apiKey: 'test-key' });
+  });
+
+  afterEach(async () => {
+    await stop(server);
+  });
+
+  describe('contract matching', () => {
+    it('returns created order from valid request', async () => {
+      const order = await client.create({ sku: 'BOOK-1', quantity: 2 });
+
+      expect(order).toEqual({ id: 'order-1', status: 'pending' });
+    });
+
+    it('sends api key as bearer token', async () => {
+      await client.create({ sku: 'BOOK-1', quantity: 2 });
+
+      expect(received[0].authorization).toBe('Bearer test-key');
+    });
+  });
+});
 ```
