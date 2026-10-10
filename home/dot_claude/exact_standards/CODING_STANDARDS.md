@@ -17,7 +17,6 @@ Between these files, a language file beats [testing.md](testing.md) on syntax: n
 |---|---|
 | Writing or changing any code, tests included | [code.md](code.md) |
 | Writing or changing any test | [testing.md](testing.md), then the language file |
-| Any behaviour change | the `tdd` skill: test-first is the default, not an opt-in |
 
 | Language | File |
 |---|---|

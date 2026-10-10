@@ -2,10 +2,6 @@
 
 The rules every test follows, in any language. The language file decides how they're spelled.
 
-## Test-first by default
-
-Every behaviour change starts with a failing test, following the `tdd` skill. Skip it only for the cases that skill lists, or when I opt out.
-
 ## Pick the layer
 
 Before writing a test, decide the layer for its seam (the public interface it goes through) and say why in one line.
@@ -18,11 +14,12 @@ A **boundary** is anything outside the process's own memory: network, database, 
 | makes decisions, reaching I/O only through an injected dependency | **unit** | a hand-written fake for that dependency |
 | *is* the boundary: builds or parses HTTP, runs SQL, reads or writes files, encodes a wire format | **integration** | none on our side: a real HTTP stack, a real database, a real temp directory |
 | a flow across several of the above | **one integration test** for the happy path, **unit tests** for every branch | as above |
+| a journey a user takes through the running app, in a repo with an end-to-end suite or when I ask | **one end-to-end test** per critical journey; its branches stay at unit and integration | none: the real app, stubbing only states it can't produce on demand |
 
 - **Test logic at the unit level, and each boundary for real, once.** Don't re-run unit-level branches through an integration test.
 - **Services I don't run**, like a third-party API, are replaced by a local server that speaks their contract. The HTTP stack in between stays real.
 - **Heavy mocking is a design signal.** A unit test that needs it is testing code that mixes logic and I/O: split the code instead of mocking deeper.
-- **End-to-end tests** (whole system, browser or device) only where the repo already has a suite, or when I ask.
+- **Two kinds of API test:** an integration test runs this code's HTTP handling against a local stand-in; an end-to-end API test calls the running app the way a client would.
 
 For a client that sends `POST /v1/orders`: parsing the price is **unit**; the request it sends and how it reads the response is **integration**, against a local server.
 
