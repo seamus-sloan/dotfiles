@@ -47,8 +47,9 @@ export const test = base.extend<OrdersFixtures>({
   createdOrderIds: async ({ ordersRequests }, use) => {
     const ids: string[] = [];
     await use(ids);
-    for (const id of ids) {
-      await expect(await ordersRequests.deleteOrder(id)).toBeOK();
+    const responses = await Promise.all(ids.map((id) => ordersRequests.deleteOrder(id)));
+    for (const response of responses) {
+      await expect(response).toBeOK();
     }
   },
 });
