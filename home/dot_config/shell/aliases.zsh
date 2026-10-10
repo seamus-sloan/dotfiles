@@ -39,7 +39,7 @@ _fresh_prune_integrated() {
 
     local b
     for b in $candidates; do
-        # In main already: --is-ancestor for fast-forwards, `integrated` for squash and rebase.
+        # Already in the default branch: --is-ancestor for fast-forwards, `integrated` for squash and rebase.
         git merge-base --is-ancestor "$b" "$default_branch" 2>/dev/null \
             || print -r -- "$json" | jq -e --arg b "$b" \
                 '.items[] | select(.branch == $b) | select(.display.state == "integrated")' >/dev/null \
