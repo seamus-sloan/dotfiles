@@ -9,7 +9,7 @@ Proactive partner to [test-failure-triage](../test-failure-triage/SKILL.md) (whi
 
 ## Read the standards first
 
-Before the first test, read `~/.claude/standards/testing.md` and the language file it points to. They decide each test's layer, name, location, and shape. This skill decides only the order the work happens in.
+Before the first test, read `~/.claude/standards/CODING_STANDARDS.md` and every file it names for the task. They decide each test's layer, name, location, and shape. This skill decides only the order the work happens in.
 
 ## Iron Law
 
@@ -46,7 +46,7 @@ parsePrice (unit: pure parsing, no I/O)
     rejects negative amount
 ```
 
-- **Run directly** (`/tdd`, or TDD in the main session): confirm the list with the user before the first test. No test is written at an unconfirmed seam.
+- **Run directly** (`/tdd`, or TDD in the main session): when the list adds a new seam or a new test file, confirm it with the user before the first test, and write no test at an unconfirmed seam. Otherwise show the list and proceed.
 - **Run under a plan** (the `dev-loop` implementer, a `writing-plans` task): the seams and layers the plan lists count as agreed. Write the list from them and include it in your report. If the plan lists no seams for a task, return `NEEDS_CONTEXT` rather than picking your own.
 
 The list holds names, not tests. Tests are still written one at a time (see horizontal slicing, below), and the list grows as each cycle teaches you something.
@@ -55,7 +55,7 @@ The list holds names, not tests. Tests are still written one at a time (see hori
 
 When a slice crosses a boundary, run two loops:
 
-1. **Outer:** write the integration test at the outermost seam and watch it fail. It stays red while you work.
+1. **Outer:** write the test at the outermost seam and watch it fail: end-to-end when the slice is a user journey the layer table sends there, integration otherwise. It stays red while you work.
 2. **Inner:** drive the logic behind it with unit tests, one Red → Green → Refactor cycle each.
 3. **Close:** the outer test goes green once the inner work is done. While it's still red, its failure names the next unit test to write.
 
@@ -73,7 +73,7 @@ RED  ──▶ verify-red ──▶ GREEN ──▶ verify-green ──▶ REFAC
 
 ### 1. RED — write the test
 
-One behaviour from the test list, at its agreed seam and layer. Name, place, and shape it as the language file's examples do. Real code, not mocks: double only the boundaries (see Test doubles in `~/.claude/standards/testing.md`).
+One behaviour from the test list, at its agreed seam and layer. Name, place, and shape it as the standards' examples do. Real code, not mocks: double only the boundaries (see Test doubles in `~/.claude/standards/testing.md`).
 
 ### 2. Verify RED — watch it fail
 
@@ -138,7 +138,7 @@ What makes a single test bad (coupled to the implementation, or tautological) li
 - **Never** declare a bug fix complete without the revert-and-fail-again step (regression proof).
 - **Never** combine multiple behaviors in one test. One test, one behavior.
 - **Never** mock what you're testing. Mock the boundary, not the unit.
-- **Never** write a test at a seam nobody agreed on, or before its layer is decided.
+- **Never** write a test at a new seam nobody agreed on, or before its layer is decided.
 - **Never** compute a test's expected value the way the code computes it.
 - **Never** write a batch of tests ahead of the code. One slice at a time.
 
