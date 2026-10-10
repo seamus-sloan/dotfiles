@@ -28,18 +28,19 @@ e2e/
 
 ## Page objects
 
-- Every page extends `BasePage` and declares `static get path()`. `goto()` navigates there and waits for the page's `readyLocator`.
+- Every page extends `BasePage` and declares `static get path()`. `goto()` navigates there and waits for the page's `readyLocator`; `assertDisplayed()` checks the URL and that `readyLocator` is visible.
 - Locators are `readonly` fields assigned in the constructor. A locator that needs an argument is a method named for what it returns: `orderCard(id)`.
 - Locator names are camelCase and end in the element's type: `placeOrderButton`, `skuField`, `statusText`, `confirmationMessage`, `ordersTab`, `helpLink`.
 - Reach for `getByRole` first, then `getByLabel`, `getByPlaceholder`, or `getByText`, then `getByTestId`. CSS only when nothing else reaches the element.
 - Members go in this order, separated by blank lines rather than comments: static `path`, components, locators, constructor, `readyLocator`, dynamic locators, actions, `assert*` methods.
 - Actions are verbs (`fillOrderForm`, `placeOrder`, `signIn`) and never assert.
+- An action that triggers a request starts `waitForResponse` before it acts, then returns what the test needs: `placeOrder()` returns the created `Order`.
 - `assert*` methods hold grouped or data-driven checks that specs would otherwise repeat. A single check stays in the spec.
 - Pages never call APIs or build test data. That belongs to request objects and `data/`.
 
 ```ts
 // pages/BasePage.ts
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export default abstract class BasePage {
   static get path(): string {
@@ -50,9 +51,18 @@ export default abstract class BasePage {
 
   protected abstract get readyLocator(): Locator;
 
+  private get path(): string {
+    return (this.constructor as typeof BasePage).path;
+  }
+
   async goto(): Promise<void> {
-    await this.page.goto((this.constructor as typeof BasePage).path);
+    await this.page.goto(this.path);
     await this.readyLocator.waitFor();
+  }
+
+  async assertDisplayed(): Promise<void> {
+    await expect(this.page).toHaveURL(this.path);
+    await expect(this.readyLocator).toBeVisible();
   }
 }
 ```
@@ -99,8 +109,12 @@ export default class OrdersPage extends BasePage {
     await this.quantityField.fill(String(order.quantity));
   }
 
-  async placeOrder(): Promise<void> {
+  async placeOrder(): Promise<Order> {
+    const response = this.page.waitForResponse(
+      (r) => r.url().endsWith('/api/orders') && r.request().method() === 'POST',
+    );
     await this.placeOrderButton.click();
+    return (await response).json();
   }
 
   async assertOrderCard(order: Order): Promise<void> {
@@ -212,13 +226,32 @@ export default class OrdersRequests extends BaseRequests {
 
 ## Fixtures
 
-- One fixtures file per area extends `test` with its pages and request objects and re-exports `expect`. Specs import both from it, never from `@playwright/test`.
+- One fixtures file per area extends `test` with its pages and request objects and re-exports `expect`. An area builds on the fixtures it needs: `ordersFixtures` extends `authFixtures`.
+- Specs and setup files import `test` and `expect` from a fixtures file, never from `@playwright/test`. They never construct page objects or touch `page` directly.
 - Fixtures construct page objects but never navigate. The test calls `goto()`.
 - A fixture that tracks created data deletes it after `use`, so cleanup runs even when a test fails.
 
 ```ts
-// fixtures/ordersFixtures.ts
+// fixtures/authFixtures.ts
 import { test as base, expect } from '@playwright/test';
+import LoginPage from '../pages/LoginPage';
+
+type AuthFixtures = {
+  loginPage: LoginPage;
+};
+
+export const test = base.extend<AuthFixtures>({
+  loginPage: async ({ page }, use) => {
+    await use(new LoginPage(page));
+  },
+});
+
+export { expect };
+```
+
+```ts
+// fixtures/ordersFixtures.ts
+import { test as base, expect } from './authFixtures';
 import OrdersRequests from '../apiRequests/OrdersRequests';
 import OrdersPage from '../pages/OrdersPage';
 
@@ -249,7 +282,7 @@ export { expect };
 
 ## Auth and config
 
-- One setup project per role signs in through the login page object and saves the storage state. Setup files import from `@playwright/test` directly.
+- One setup project per role signs in through the login page object and saves the storage state through the `context` fixture.
 - Every other project depends on it and loads that state. The path lives in one module, shared by the config and the setup.
 - `forbidOnly` and a single retry on CI only. Traces are kept on failure.
 
@@ -278,17 +311,14 @@ export default defineConfig({
 
 ```ts
 // tests/setup/customer.setup.ts
-import { test as setup } from '@playwright/test';
 import { CUSTOMER_STORAGE_STATE } from '../../auth/storageStates';
-import LoginPage from '../../pages/LoginPage';
-import OrdersPage from '../../pages/OrdersPage';
+import { test as setup } from '../../fixtures/ordersFixtures';
 
-setup('sign in as a customer', async ({ page }) => {
-  const loginPage = new LoginPage(page);
+setup('sign in as a customer', async ({ loginPage, ordersPage, context }) => {
   await loginPage.goto();
   await loginPage.signIn('reader@example.com', 'test-password');
-  await page.waitForURL(OrdersPage.path);
-  await page.context().storageState({ path: CUSTOMER_STORAGE_STATE });
+  await ordersPage.assertDisplayed();
+  await context.storageState({ path: CUSTOMER_STORAGE_STATE });
 });
 ```
 
@@ -301,15 +331,14 @@ setup('sign in as a customer', async ({ page }) => {
 - Tags go in the options, never the title: `test('…', { tag: '@smoke' }, …)`.
 - Seed data through request objects inside the test, before opening the page that shows it. Builders in `data/` make unique values, so parallel runs never collide.
 - `toBeVisible` for presence. `toBeInViewport` only when scrolling is the behaviour under test.
-- Start a `waitForResponse` before the action that triggers it, and run independent waits together with `Promise.all`. Use `expect.poll` with a `message` for values that settle over time.
+- Run independent waits together with `Promise.all`. Use `expect.poll` with a `message` for values that settle over time.
 - No `waitForTimeout` and no retry loops. A wait that truly needs time uses a named constant and a one-line comment saying why.
-- Stub with `page.route` only to force a state the backend can't easily produce, like an empty list or a server error.
+- Stub routes only to force a state the backend can't easily produce, like an empty list or a server error, through a page-object method that calls `page.route`.
 
 ```ts
 // tests/orders/orders.spec.ts
 import { buildOrder, type Order } from '../../data/orders';
 import { expect, test } from '../../fixtures/ordersFixtures';
-import LoginPage from '../../pages/LoginPage';
 
 test.describe('orders page', () => {
   test.describe('new orders', () => {
@@ -325,11 +354,7 @@ test.describe('orders page', () => {
       });
 
       const created = await test.step('submit the order', async () => {
-        const response = ordersPage.page.waitForResponse(
-          (r) => r.url().endsWith('/api/orders') && r.request().method() === 'POST',
-        );
-        await ordersPage.placeOrder();
-        const placed: Order = await (await response).json();
+        const placed = await ordersPage.placeOrder();
         createdOrderIds.push(placed.id);
         return placed;
       });
@@ -366,7 +391,7 @@ test.describe('orders page', () => {
   });
 
   test.describe('header', () => {
-    test('sign out from the header', async ({ ordersPage }) => {
+    test('sign out from the header', async ({ ordersPage, loginPage }) => {
       await test.step('open the orders page', async () => {
         await ordersPage.goto();
       });
@@ -376,7 +401,7 @@ test.describe('orders page', () => {
       });
 
       await test.step('check the login page shows', async () => {
-        await expect(ordersPage.page).toHaveURL(LoginPage.path);
+        await loginPage.assertDisplayed();
       });
     });
   });
