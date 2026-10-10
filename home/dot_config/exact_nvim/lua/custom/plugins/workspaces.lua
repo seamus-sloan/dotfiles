@@ -16,8 +16,6 @@ local M = {}
 
 local uv = vim.uv or vim.loop
 
--- Directories to scan for projects. Both are walked by the same rule below, so
--- adding a root here is all it takes to include another checkout area.
 local SEARCH_ROOTS = { '~/Repos', '~/worktrees' }
 
 local function is_dir(path)
@@ -25,9 +23,7 @@ local function is_dir(path)
   return stat ~= nil and stat.type == 'directory'
 end
 
--- True for a git checkout *or* a worktrunk worktree: `wt switch -c` leaves a
--- `.git` file pointing back at the main repo rather than a `.git` directory,
--- so this deliberately tests for existence and not for type.
+-- Existence, not type: a worktrunk worktree has a .git file, not a directory.
 local function is_repo(path) return uv.fs_stat(vim.fs.joinpath(path, '.git')) ~= nil end
 
 local function subdirs(path)
@@ -36,23 +32,13 @@ local function subdirs(path)
   if not ok then return out end
   for name, type in iter do
     local child = vim.fs.joinpath(path, name)
-    -- `vim.fs.dir` reports a symlinked directory as 'link', so stat it rather
-    -- than trusting the type it hands back.
+    -- vim.fs.dir reports symlinked directories as 'link', so stat them.
     if name:sub(1, 1) ~= '.' and (type == 'directory' or is_dir(child)) then out[#out + 1] = child end
   end
   return out
 end
 
--- Turn a root into a flat list of project directories.
---
--- The rule is one level of indirection: a child that is itself a repo is a
--- project, and a child that merely *contains* repos is a container whose
--- children are the projects. That distinction is what separates
--- `~/Repos/Personal` (a container — every child is its own repo) from
--- `~/Repos/excalidraw` (a plain non-git project directory that should be
--- offered as-is, not replaced by its subfolders). It also means `~/worktrees`
--- needs no special handling: `~/worktrees/<repo>` is a container and each
--- `<branch>` beneath it is a worktree.
+-- Projects under root: each child, or the repos inside a child that contains repos.
 local function collect(root)
   local found = {}
   for _, child in ipairs(subdirs(root)) do
@@ -70,9 +56,7 @@ local function collect(root)
   return found
 end
 
--- `~/Repos/Personal/sadb` reads better in a picker than the absolute path, and
--- keeping the parent segment is what disambiguates the worktrees of one repo
--- from each other.
+-- Keeps the parent segment so worktrees of one repo stay distinguishable.
 local function display_name(path)
   local name = vim.fn.fnamemodify(path, ':~')
   return (name:gsub('^~/', ''):gsub('^Repos/', ''))
@@ -91,18 +75,12 @@ function M.projects()
       end
     end
   end
-  -- Alphabetical rather than by recency: a directory's mtime only moves when
-  -- entries are added or removed at its top level, so it does not track "the
-  -- repo I was just editing in" and would only make the order feel arbitrary.
-  -- Fuzzy matching is the real navigation here; a stable order is what makes
-  -- muscle memory possible.
+  -- Alphabetical: directory mtimes don't track recent edits.
   table.sort(out, function(a, b) return a.name < b.name end)
   return out
 end
 
--- The directory a tab is scoped to. `getcwd(-1, tab)` returns the tab-local
--- directory, falling back to the global one for a tab that never ran `:tcd` —
--- which is the tab you get when nvim starts.
+-- Tab-local cwd, or the global one for a tab that never ran :tcd.
 local function tab_cwd(tabnr)
   local ok, cwd = pcall(vim.fn.getcwd, -1, tabnr)
   return ok and vim.fs.normalize(cwd) or nil
@@ -116,14 +94,7 @@ local function find_tab(path)
   return nil
 end
 
--- An untouched tab is one holding a single empty, unnamed, unmodified buffer and
--- carrying no `:tcd` -- exactly what a bare `nvim` opens with. Reusing it keeps
--- the first repo you pick from stranding an empty tab beside it.
---
--- The `:tcd` test is what stops a tab you already assigned a repo to from being
--- recycled: dismissing the file picker with `<Esc>` leaves the tab's buffer
--- empty, and without this the next repo you picked would silently re-scope that
--- tab instead of opening its own.
+-- A bare nvim tab with no :tcd yet, safe to reuse for the first repo picked.
 local function tab_is_scratch(tabid)
   local tabnr = vim.api.nvim_tabpage_get_number(tabid)
   if vim.fn.haslocaldir(-1, tabnr) ~= 0 then return false end
@@ -154,9 +125,7 @@ function M.open(path)
   if not tab_is_scratch(vim.api.nvim_get_current_tabpage()) then vim.cmd 'tabnew' end
   vim.cmd.tcd(vim.fn.fnameescape(path))
 
-  -- Land in the file picker: reaching a file in another repo is the whole
-  -- reason for switching, and `<Esc>` still leaves you in the new tab scoped
-  -- correctly if you'd rather browse with `\`.
+  -- Open the file picker: reaching a file is why you switched.
   local ok, builtin = pcall(require, 'telescope.builtin')
   if ok then builtin.find_files() end
 end
@@ -206,9 +175,7 @@ function M.close()
   vim.cmd 'tabclose'
 end
 
--- Diffview opens in a tab of its own, so it shows up in the tabline next to the
--- repos. Labelling it as such is less confusing than showing the repo name
--- twice.
+-- Diffview gets its own tab; label it rather than repeat the repo name.
 local function tab_is_diffview(tabid)
   for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tabid)) do
     local buf = vim.api.nvim_win_get_buf(win)
@@ -231,16 +198,14 @@ local function tab_label(tabid, tabnr)
   local cwd = tab_cwd(tabnr)
   if not cwd then return '[no name]' end
 
-  -- A worktree's own basename is the branch, which says nothing about which
-  -- repo it belongs to — `dotfiles:u-sloan-nvim-repo-tabs` does.
+  -- A worktree's basename is the branch, so prefix the repo.
   local label = vim.fs.basename(cwd)
   if cwd:match '/worktrees/' then label = vim.fs.basename(vim.fs.dirname(cwd)) .. ':' .. label end
   if #label > 24 then label = label:sub(1, 23) .. '…' end
   return label
 end
 
---- Renders `vim.o.tabline`. Referenced by name from the option, so it has to
---- stay a public field on the module.
+--- Renders `vim.o.tabline`; public because the option references it by name.
 function M.tabline()
   local current = vim.api.nvim_get_current_tabpage()
   local parts = {}
@@ -260,8 +225,7 @@ function M.tabline()
 end
 
 vim.o.tabline = [[%!v:lua.require('custom.plugins.workspaces').tabline()]]
--- 1 = only show the tabline once a second tab exists, so a single-repo session
--- looks exactly as it did before.
+-- Show the tabline only once a second tab exists.
 vim.o.showtabline = 1
 
 vim.keymap.set('n', '<leader>ww', M.pick, { desc = '[W]orkspace: s[w]itch repo' })
@@ -269,8 +233,7 @@ vim.keymap.set('n', '<leader>wq', M.close, { desc = '[W]orkspace: [q]uit this ta
 vim.keymap.set('n', ']t', '<cmd>tabnext<cr>', { desc = 'Next tab' })
 vim.keymap.set('n', '[t', '<cmd>tabprevious<cr>', { desc = 'Previous tab' })
 
--- `<leader>1`..`<leader>9` jump straight to a tab. `g<Tab>` (built in) returns
--- to the last one you were on, which covers ping-ponging between two repos.
+-- <leader>1..9 jump to a tab; built-in g<Tab> returns to the last one.
 for i = 1, 9 do
   vim.keymap.set('n', '<leader>' .. i, i .. 'gt', { desc = 'Go to tab ' .. i })
 end
