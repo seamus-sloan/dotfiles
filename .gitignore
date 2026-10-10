@@ -1,3 +1,2 @@
-# opencode-swarm session state (plans, evidence, telemetry) -- created in
-# whatever directory a swarm session runs from. Never dotfiles content.
+# opencode-swarm session state, created wherever a swarm session runs.
 .swarm/

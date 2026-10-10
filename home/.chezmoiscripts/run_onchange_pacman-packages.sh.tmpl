@@ -18,8 +18,7 @@ pkgs="
   rustup cargo-binstall cargo-generate sqlx-cli zellij
 "
 
-# sudo only when something is missing, so a re-run that changes nothing needs
-# no password. pacman -T prints the packages that aren't installed.
+# pacman -T lists what's missing, so sudo only prompts when there's work.
 missing=$(pacman -T $pkgs) || true
 [ -z "$missing" ] || sudo pacman -S --needed --noconfirm $missing
 
@@ -27,8 +26,7 @@ command -v mise >/dev/null 2>&1 || { echo "mise missing: install it first (Omarc
 # Not packaged for Arch: their GitHub releases, through mise.
 mise use -g codex rtk worktrunk
 
-# The cargo entries Arch doesn't package, prebuilt where cargo-binstall finds a
-# release, compiled otherwise.
+# Cargo tools Arch doesn't package, prebuilt by cargo-binstall where possible.
 rustup default >/dev/null 2>&1 || rustup default stable
 cargo binstall -y create-tauri-app worktrunk-sync workz
 

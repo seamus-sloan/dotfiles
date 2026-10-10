@@ -18,40 +18,25 @@
 
 vim.pack.add { 'https://github.com/MeanderingProgrammer/render-markdown.nvim' }
 
--- Listing `octo` in `file_types` below is necessary but NOT sufficient.
--- octo sets `filetype = 'octo'` on its buffers, and nothing -- neither octo nor
--- render-markdown -- tells treesitter which grammar that filetype speaks. With
--- no parser bound, render-markdown has nothing to walk and silently renders
--- nothing at all. Pointing the filetype at the markdown grammar is what makes
--- PR descriptions and review comments render.
+-- Without a grammar bound to the octo filetype, render-markdown renders nothing.
 vim.treesitter.language.register('markdown', 'octo')
 
--- render-markdown's out-of-the-box icons are Nerd Font glyphs, and init.lua
--- sets `vim.g.have_nerd_font = false` -- so with the defaults every heading and
--- checkbox would come out as a tofu box. Pick plain Unicode when the flag is
--- off, and the nicer glyphs automatically if it is ever turned on.
+-- Plain Unicode icons unless a nerd font is enabled.
 local nerd = vim.g.have_nerd_font
 
 require('render-markdown').setup {
-  -- `octo` is the payoff for pairing this with octo.nvim: PR descriptions and
-  -- review comments are markdown buffers, so they render here too instead of
-  -- showing raw `###` and backticks.
+  -- octo's PR descriptions and review comments are markdown too.
   file_types = { 'markdown', 'octo' },
 
   heading = {
-    -- `position = 'overlay'` writes the icon over the `#` characters rather
-    -- than pushing the text right, so headings stay aligned with body text.
+    -- Icon over the #s, so headings stay aligned with body text.
     position = 'overlay',
     icons = nerd and { '󰲡 ', '󰲣 ', '󰲥 ', '󰲧 ', '󰲩 ', '󰲫 ' } or { '◉ ', '○ ', '◈ ', '◇ ', '▪ ', '▫ ' },
-    -- Full-width background bars. 'block' would stop the bar at the end of the
-    -- heading text, which is tidier in a narrow split but much less striking.
     width = 'full',
   },
 
   code = {
-    -- 'full' draws both the language label and the block background. The
-    -- background is the part that actually helps you find code in a long PR
-    -- description.
+    -- The background is what makes code easy to find in a long PR description.
     style = 'full',
     width = 'block',
     min_width = 40,
@@ -68,16 +53,12 @@ require('render-markdown').setup {
     checked = { icon = nerd and '󰱒 ' or '☑ ' },
   },
 
-  -- Gutter signs are Nerd Font glyphs, and they collide with the gitsigns
-  -- column anyway.
+  -- Nerd Font glyphs that would collide with gitsigns anyway.
   sign = { enabled = nerd },
 
-  -- No `latex` treesitter parser installed and no `utftex`/`latex2text` binary
-  -- to render with, so leaving this on only produces healthcheck warnings.
+  -- No latex parser or renderer installed; enabling it only adds healthcheck warnings.
   latex = { enabled = false },
 
-  -- Indent body text to match the depth of the heading above it, so a document
-  -- gets visible structure rather than everything sitting flush left.
   indent = { enabled = true },
 }
 
