@@ -47,7 +47,7 @@ parsePrice (unit: pure parsing, no I/O)
 ```
 
 - **Run directly** (`/tdd`, or TDD in the main session): when the list adds a new seam or a new test file, confirm it with the user before the first test, and write no test at an unconfirmed seam. Otherwise show the list and proceed.
-- **Run under a plan** (the `dev-loop` implementer, a `writing-plans` task): the seams and layers the plan lists count as agreed. Write the list from them and include it in your report. If the plan lists no seams for a task, return `NEEDS_CONTEXT` rather than picking your own.
+- **Run under a plan** (the `dev-loop` implementer, a `writing-plans` task): the seams and layers the plan lists count as agreed. Write the list from them. If the plan lists no seams for a behaviour task, return `NEEDS_CONTEXT` rather than picking your own; a task marked `Seams: none — <why>` needs no test.
 
 The list holds names, not tests. Tests are still written one at a time (see horizontal slicing, below), and the list grows as each cycle teaches you something.
 

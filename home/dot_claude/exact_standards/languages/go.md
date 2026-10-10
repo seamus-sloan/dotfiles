@@ -101,14 +101,16 @@ var twoBooks = orders.NewOrder{SKU: "BOOK-1", Quantity: 2}
 
 func startFakeAPI(t *testing.T, received chan<- http.Header) *httptest.Server {
 	t.Helper()
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /v1/orders", func(w http.ResponseWriter, r *http.Request) {
 		if received != nil {
 			received <- r.Header.Clone()
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		_, _ = io.WriteString(w, `{"id":"order-1","status":"pending"}`)
-	}))
+	})
+	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
 	return server
 }
