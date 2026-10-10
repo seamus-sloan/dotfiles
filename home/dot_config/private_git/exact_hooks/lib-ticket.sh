@@ -9,9 +9,7 @@
 
 PREFIX_MAP="${XDG_CONFIG_HOME:-$HOME/.config}/git/issue-prefixes"
 
-# This repo's GitHub prefix, or nothing when it isn't in the map. Identity comes
-# from origin's URL rather than the working directory: worktrees live at
-# ~/worktrees/<repo>/<branch>, where the directory name is the branch.
+# This repo's GitHub prefix, from origin's URL since worktree dirs are branch-named.
 repo_prefix() {
     [ -f "$PREFIX_MAP" ] || return 1
     url=$(git config --get remote.origin.url 2>/dev/null)
@@ -31,8 +29,7 @@ known_prefixes() {
     awk '/^[[:space:]]*(#|$)/ { next } { print $2 }' "$PREFIX_MAP"
 }
 
-# The <PREFIX>-<number> ticket leading the current branch name, if there is one.
-# Fails on detached HEAD and on unticketed branches (main, u/sloan/foo, ...).
+# The <PREFIX>-<number> leading the branch name; fails when there isn't one.
 branch_ticket() {
     branch=$(git branch --show-current 2>/dev/null)
     [ -n "$branch" ] || return 1

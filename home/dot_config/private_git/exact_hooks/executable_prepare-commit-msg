@@ -22,8 +22,7 @@ inject_ticket() {
     # Fails on detached HEAD (rebase etc.) and on branches with no ticket.
     ticket=$(branch_ticket) || return 0
 
-    # This repo's own prefix means the number is a GitHub issue, so reference it
-    # the way GitHub links. Foreign keys (Jira, another repo) go in verbatim.
+    # Own prefix → GitHub issue reference; foreign keys go in verbatim.
     ref=$ticket
     mine=$(repo_prefix)
     [ -n "$mine" ] && [ "${ticket%%-*}" = "$mine" ] && ref="#${ticket#*-}"

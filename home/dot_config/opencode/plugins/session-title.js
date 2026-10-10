@@ -28,22 +28,10 @@ export const SessionTitle = async ({ client, directory, worktree }) => {
   const PR_URL = /https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/pull\/(\d+)/
   const PR_PREFIX = /^#\d+\s+/
 
-  // opencode seeds a session with "New session - <ISO timestamp>" and only
-  // replaces it once the title agent has summarized the conversation. Appending
-  // the code to that placeholder produced titles like
-  // "New session - 2026-09-14T17:18:54.195Z - D", so wait for the real title.
+  // Wait for the real title, not opencode's "New session - <timestamp>" seed.
   const PLACEHOLDER = /^New session - \d{4}-\d{2}-\d{2}T[\d:.]+Z$/
 
-  // Resolved once per plugin instance: a plugin is loaded per directory, and the
-  // repo a directory belongs to does not change under us. The path is built here
-  // rather than relying on shell expansion, and passed as a single argv entry, so
-  // neither `~` nor a space in the path needs quoting.
-  //
-  // Deliberately node:child_process and not the plugin's `$`: opencode only
-  // supplies `$` when it is running under Bun (`$: typeof Bun === "undefined" ?
-  // undefined : Bun.$`), and the desktop app runs its server inside Electron's
-  // Node runtime, where `$` is therefore undefined and calling it threw
-  // "$ is not a function" on every session.updated.
+  // node:child_process, not `$`: the desktop app runs on Node, where `$` is undefined.
   const script = `${process.env.HOME}/.claude/hooks/repo-code.sh`
   let codePromise
 
@@ -54,22 +42,17 @@ export const SessionTitle = async ({ client, directory, worktree }) => {
         error ? reject(error) : resolve(stdout.trim()),
       )
     }).catch(() => {
-      // Clear the cache on failure. A rejected promise left in `codePromise` is
-      // re-awaited by every subsequent session.updated, which is what turned one
-      // missing-script error into a flood of unhandled rejections.
+      // Drop the failed promise, or every later event re-awaits the rejection.
       codePromise = undefined
       return ""
     })
     return codePromise
   }
 
-  // Titles this plugin has written, keyed by session. session.update publishes
-  // another session.updated, so without this the handler would chase its own
-  // tail forever.
+  // Titles we wrote, so our own session.updated events don't loop.
   const written = new Map()
 
-  // PR numbers already folded in, so a retried `gh pr create` against the same
-  // branch doesn't nest prefixes into "#124 #123 Rename Sessions - D".
+  // PR numbers already folded in, so a retried `gh pr create` can't nest prefixes.
   const folded = new Map()
 
   const setTitle = async (session, title) => {
@@ -95,8 +78,7 @@ export const SessionTitle = async ({ client, directory, worktree }) => {
       if (event.type !== "session.updated") return
       const session = event.properties.info
 
-      // Subagent sessions are never surfaced in the sidebar, so labelling them
-      // is noise the user pays for in API calls.
+      // Subagent sessions never show in the sidebar.
       if (session.parentID) return
 
       // Our own write coming back around.
@@ -114,9 +96,7 @@ export const SessionTitle = async ({ client, directory, worktree }) => {
       await setTitle(session, `${number ? `#${number} ` : ""}${base}${suffix}`)
     },
 
-    // A PR was opened: fold its number into the title. Scanning the whole tool
-    // output rather than a named field keeps this working if the bash result
-    // shape shifts.
+    // Fold an opened PR's number into the title; scan all output in case its shape shifts.
     "tool.execute.after": async (input, output) => {
       if (input.tool !== "bash") return
       if (!/\bgh\s+pr\s+create\b/.test(String(input.args?.command ?? ""))) return

@@ -9,9 +9,7 @@ hook_dir=$(dirname "$0")
 [ -f "$hook_dir/lib-ticket.sh" ] || hook_dir="${XDG_CONFIG_HOME:-$HOME/.config}/git/hooks"
 . "$hook_dir/lib-ticket.sh"
 
-# A branch carrying *another* repo's issue prefix (OMNI-12/... inside dot-files)
-# is misnamed — its number points into the wrong repo's issues. Prefixes the map
-# has never heard of are Jira keys and pass untouched.
+# Reject another repo's issue prefix; unknown prefixes are Jira keys and pass.
 check_ticket_prefix() {
     ticket=$(branch_ticket) || return 0
     mine=$(repo_prefix) || return 0

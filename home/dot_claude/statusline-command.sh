@@ -50,10 +50,7 @@ red=$'\e[31m' green=$'\e[32m' yellow=$'\e[33m' blue=$'\e[34m' magenta=$'\e[35m' 
 none="${dim}—${reset}"
 
 # ── Layout ───────────────────────────────────────────────────────────────────
-# Claude Code sets COLUMNS; keep a small right margin so rows never wrap. In
-# the four-column grid the last column is a fixed 32 wide (enough for
-# "7d limit 100% · resets in 6d 23h") and the others share the rest, so the
-# grid reaches the right edge and columns stay put as values change.
+# Last column is fixed at 32, enough for "7d limit 100% · resets in 6d 23h".
 usable=$(( ${COLUMNS:-120} - 4 ))
 lw=9                       # label width
 if (( usable >= 140 )); then
@@ -126,8 +123,7 @@ vis() {
   print -n ${#s}
 }
 
-# cell <label> <value> <width>: dim label, value, then spaces out to width.
-# A width of 0 skips the padding (last cell in a row).
+# cell <label> <value> <width>: dim label, value, padding to width (0 = none).
 cell() {
   local out="${dim}${(r:lw:)1}${reset}${2:-$none}" pad
   if (( $3 > 0 )); then
@@ -149,8 +145,7 @@ effort_v=""
 [[ $style == *:* && ${style%%:*} == ${style#*:} ]] && style=${style#*:}
 style_v="${cyan}$(clip $vw "$style")${reset}"
 
-# The JSON has no permission mode; the transcript records it on each prompt,
-# so a mid-turn shift+tab shows up after the next prompt.
+# Mode comes from the transcript, so a mid-turn shift+tab shows next prompt.
 mode=""
 [[ -r $transcript ]] && mode=$(tac "$transcript" | grep -m1 -o '"permissionMode":"[^"]*"' | cut -d'"' -f4)
 case $mode in
@@ -185,9 +180,7 @@ if [[ -n $cwd ]] && gs=$(GIT_OPTIONAL_LOCKS=0 git -C "$cwd" status --porcelain=v
   branch_v+="${yellow}${dirty}${reset}${dim}${extra}${reset}"
 fi
 
-# Claude Code's pr object only covers open PRs: it drops merged and closed
-# ones and never reports conflicts. So ask gh, at most once a minute per
-# directory and branch, in the background; this run uses the last answer.
+# Claude Code's pr object misses merged, closed, and conflicts; gh fills in, cached a minute.
 gh_num="" gh_url="" gh_state="" gh_draft="" gh_mergeable="" gh_review=""
 if [[ -n $branch && $branch != '(detached)' ]] && (( $+commands[gh] )); then
   cache=$state_dir/pr-${${:-$cwd@$branch}//[^A-Za-z0-9._-]/_}.json
@@ -270,8 +263,7 @@ if [[ -n $ctx_pct ]]; then
   ctx_v="${c}$(bar $ctx_pct) ${ctx_pct}%${reset} ${dim}$(human $ctx_used)/$(human $ctx_size)${reset}"
 fi
 
-# Every API call in the main conversation, cache reads included. A response
-# is logged once per content block, so dedupe on the message id.
+# Main-conversation API calls, cache reads included, deduped by message id.
 tok_v=""
 if [[ -r $transcript ]]; then
   read tok_in tok_out < <(grep -F '"usage"' "$transcript" | jq -rn '
@@ -315,8 +307,7 @@ for (( k = 1; k <= ${#cells}; k += 2 )); do
   fi
 done
 
-# The title spans the first two columns, the limits take the last two; on
-# narrower grids each gets its own row.
+# Title spans two columns and limits the other two; narrow grids stack them.
 title_v=""
 case $ncols in
   4)
