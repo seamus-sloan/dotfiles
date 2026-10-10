@@ -56,7 +56,7 @@ require('render-markdown').setup {
   -- Nerd Font glyphs that would collide with gitsigns anyway.
   sign = { enabled = nerd },
 
-  -- No latex parser or renderer installed; on, it only adds healthcheck warnings.
+  -- No latex parser or renderer installed; enabling it only adds healthcheck warnings.
   latex = { enabled = false },
 
   indent = { enabled = true },
