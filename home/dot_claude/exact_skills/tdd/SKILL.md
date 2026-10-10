@@ -37,13 +37,13 @@ A **seam** is the public interface a test goes through: where you observe behavi
 Before writing any test, write the **test list**: each seam, its layer from the standards' layer table with a one-line reason, and the behaviours to test there, already named in the language's convention.
 
 ```
-POST /v1/track (integration: builds and sends HTTP)
+POST /v1/orders (integration: builds and sends HTTP)
   contract matching
-    returns valid response from valid request
+    returns created order from valid request
     sends api key as bearer token
-parseCoordinates (unit: pure parsing, no I/O)
+parsePrice (unit: pure parsing, no I/O)
   validation
-    rejects latitude above 90
+    rejects negative amount
 ```
 
 - **Run directly** (`/tdd`, or TDD in the main session): confirm the list with the user before the first test. No test is written at an unconfirmed seam.
