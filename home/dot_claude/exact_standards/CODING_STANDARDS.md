@@ -15,7 +15,7 @@ Between these files, a language file beats [testing.md](testing.md) on syntax: n
 
 | Task | Read |
 |---|---|
-| Writing or changing any code, tests included | [code.md](code.md) |
+| Writing or changing any code or config, tests included | [code.md](code.md) |
 | Writing or changing any test | [testing.md](testing.md), then the language file |
 
 | Language | File |
