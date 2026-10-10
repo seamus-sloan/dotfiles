@@ -5,8 +5,8 @@ Part of the [Playwright standard](../playwright.md).
 - One class per API area, extending `BaseRequests`, which wraps Playwright's `APIRequestContext`.
 - Methods are named `<verb><Resource>`: `getOrders`, `postOrder`, `deleteOrder`.
 - They return the raw `APIResponse`. The caller asserts the status with `toBeOK()` and reads the body.
-- They're built from the `request` fixture, which carries the project's storage state, so they work in API-only projects too.
-- Specs use them to seed and clean up data. API tests use them as the subject.
+- They're built from the `request` fixture, which carries the signed-in storage state without needing a browser page.
+- Specs use them for every API call a test needs: seeding, cleanup, reading back state. The API itself is never what a spec tests.
 
 ```ts
 // apiRequests/BaseRequests.ts

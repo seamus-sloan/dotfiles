@@ -4,7 +4,7 @@ Part of the [Playwright standard](../playwright.md).
 
 ## Sign-in
 
-- One setup project per role signs in through the login page object and saves its storage state through the `context` fixture. Every browser and API project depends on it and loads that state.
+- One setup project per role signs in through the login page object and saves its storage state through the `context` fixture. Every browser project depends on it and loads that state.
 - Storage states live in `playwright/.auth/`, which is gitignored: the files hold live session cookies.
 - Credentials come from environment variables, never source, and setup fails fast when one is missing.
 
@@ -35,7 +35,6 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], storageState: CUSTOMER_STORAGE_STATE },
     },
-    { name: 'api', testMatch: /.*\.api\.ts/, dependencies: ['setup'], use: { storageState: CUSTOMER_STORAGE_STATE } },
   ],
 });
 ```

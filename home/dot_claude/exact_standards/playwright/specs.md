@@ -2,7 +2,7 @@
 
 Part of the [Playwright standard](../playwright.md).
 
-- `test.describe('<subject>')`, then an optional `test.describe('<group>')`, then `test('<behaviour>')`. The subject is the page or feature in lowercase (`orders page`), or the endpoint for API tests (`POST /api/orders`).
+- `test.describe('<subject>')`, then an optional `test.describe('<group>')`, then `test('<behaviour>')`. The subject is the page or feature, in lowercase: `orders page`.
 - Test titles are imperative: `test('cancel a pending order')`. Lowercase, no punctuation, no "should".
 - A test with more than one phase splits into `test.step`s, each named as an imperative: `'submit the order'`, `'check the order appears in the list'`.
 - Hooks are titled: `test.beforeEach('setup', …)` and `test.afterEach('teardown', …)`.
@@ -86,25 +86,3 @@ test.describe('orders page', () => {
 });
 ```
 
-```ts
-// tests/api/orders.api.ts
-import { buildOrder, type Order } from '../../data/orders';
-import { expect, test } from '../../fixtures/ordersFixtures';
-
-test.describe('POST /api/orders', () => {
-  test('create a pending order from a valid body', async ({ ordersRequests, createdOrderIds }) => {
-    const response = await ordersRequests.postOrder(buildOrder());
-
-    await expect(response).toBeOK();
-    const order: Order = await response.json();
-    createdOrderIds.push(order.id);
-    expect(order.status).toBe('pending');
-  });
-
-  test('reject an order without a sku', async ({ ordersRequests }) => {
-    const response = await ordersRequests.postOrder(buildOrder({ sku: '' }));
-
-    expect(response.status()).toBe(400);
-  });
-});
-```

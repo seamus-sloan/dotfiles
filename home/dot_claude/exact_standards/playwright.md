@@ -29,11 +29,10 @@ e2e/
 ├── playwright/.auth/  saved storage states, gitignored
 └── tests/
     ├── setup/         <role>.setup.ts
-    ├── <feature>/     <name>.spec.ts
-    └── api/           <name>.api.ts
+    └── <feature>/     <name>.spec.ts
 ```
 
 - A file holding a class is PascalCase, named exactly for its class: `OrdersPage.ts`, `OrderCardComponent.ts`, `OrdersRequests.ts`.
 - Every other file is camelCase: specs (`orders.spec.ts`), setup (`customer.setup.ts`), fixtures (`ordersFixtures.ts`), data, and config.
 - One class per file, as a named export: `export class OrdersPage`.
-- `.spec.ts` tests run in a browser. `.api.ts` tests run in their own project, with no browser, and call the running app's API as a client would. A client's own HTTP code is an integration test instead: see [testing.md](testing.md).
+- No API tests here: an API's behaviour is tested by its own service ([testing.md](testing.md)). Request objects make the API calls a spec needs, but the API is never what a spec tests.
