@@ -15,7 +15,7 @@ Between these files, a language file beats [testing.md](testing.md) on syntax: n
 
 | Task | Read |
 |---|---|
-| Writing or changing any code, tests included | [code.md](code.md) |
+| Writing or changing any code or config, tests included | [code.md](code.md) |
 | Writing or changing any test | [testing.md](testing.md), then the language file |
 | Writing or changing a Playwright test | the above, then [playwright.md](playwright.md) |
 
@@ -25,7 +25,7 @@ Between these files, a language file beats [testing.md](testing.md) on syntax: n
 | Go | [languages/go.md](languages/go.md) |
 | Rust | [languages/rust.md](languages/rust.md) |
 
-A language with no file follows [testing.md](testing.md) using its ecosystem's most common runner and layout. Ask before settling anything that leaves open.
+A language with no file follows [testing.md](testing.md) using its ecosystem's most common runner and layout. Ask before settling anything it leaves open.
 
 ## Adding a language
 

@@ -60,6 +60,10 @@ import { OrderClient } from '../src/orderClient';
 
 async function startFakeApi(received: IncomingHttpHeaders[]): Promise<Server> {
   const server = createServer((req, res) => {
+    if (req.method !== 'POST' || req.url !== '/v1/orders') {
+      res.writeHead(404).end();
+      return;
+    }
     received.push(req.headers);
     res.writeHead(201, { 'content-type': 'application/json' }).end('{"id":"order-1","status":"pending"}');
   });
