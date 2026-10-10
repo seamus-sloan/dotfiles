@@ -13,8 +13,7 @@ state=$dir/$session_id.agents.json
 tmp=$(mktemp "$dir/.agents.XXXXXX")
 trap 'rm -f "$tmp"' EXIT INT TERM
 
-# Merge this tick's rows over the ones seen before: the panel drops finished
-# rows, so the counts have to outlive them.
+# Merge over earlier rows: the panel drops finished ones, but counts must stay.
 jq -c --slurpfile prev <(cat "$state" 2>/dev/null || print '{}') \
   '($prev[0] // {}) + (.tasks // [] | map({(.id): .status}) | add // {})' \
   <<<"$input" >"$tmp" && mv "$tmp" "$state"
