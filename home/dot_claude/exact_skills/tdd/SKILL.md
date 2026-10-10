@@ -1,11 +1,15 @@
 ---
 name: tdd
-description: Test-driven development discipline. Iron Law - no production code without a failing test first. Red-Green-Refactor cycle with mandatory verify-red step, one vertical slice at a time, tests only at agreed seams. Triggers when the user asks to "use TDD", "write the test first", "TDD this feature", "test-drive this", mentions "red-green-refactor", or starts implementation work where TDD applies.
+description: Test-driven development discipline, on by default for every behaviour change. Iron Law - no production code without a failing test first. An agreed test list (seam, layer, test names) before the first test, outside-in from the boundary, Red-Green-Refactor with a mandatory verify-red step, one vertical slice at a time. Runs without being asked whenever implementation work starts on a new feature, bug fix, refactor, or behaviour change; also triggers when the user asks to "use TDD", "write the test first", "TDD this feature", "test-drive this", or mentions "red-green-refactor".
 ---
 
 # tdd
 
-Proactive partner to [test-failure-triage](../test-failure-triage/SKILL.md) (which handles failures *reactively*). This skill applies before code is written.
+Proactive partner to [test-failure-triage](../test-failure-triage/SKILL.md) (which handles failures *reactively*). This skill applies before code is written, and it is the default: the user opts out, never in.
+
+## Read the standards first
+
+Before the first test, read `~/.claude/standards/CODING_STANDARDS.md` and every file it names for the task. They decide each test's layer, name, location, and shape. This skill decides only the order the work happens in.
 
 ## Iron Law
 
@@ -26,14 +30,36 @@ Violating the letter of this rule is violating the spirit.
 
 "Skip TDD just this once" → that's the rationalization. Stop.
 
-## Agree the seams first
+## Agree the test list first
 
 A **seam** is the public interface a test goes through: where you observe behaviour without reaching inside. Tests live at seams, never against internals. You can't test everything, so agreeing the seams up front is how testing effort lands on the critical paths and complex logic instead of every edge case.
 
-Before writing any test, write down the seams under test:
+Before writing any test, write the **test list**: each seam, its layer from the standards' layer table with a one-line reason, and the behaviours to test there, already named in the language's convention.
 
-- **Run directly** (`/tdd`, or TDD in the main session): confirm them with the user. Ask: "What's the public interface, and which seams should we test?" No test is written at an unconfirmed seam.
-- **Run under a plan** (the `dev-loop` implementer, a `writing-plans` task): the seams the plan lists count as agreed. If the plan lists none for a task, return `NEEDS_CONTEXT` rather than picking your own.
+```
+POST /v1/orders (integration: builds and sends HTTP)
+  contract matching
+    returns created order from valid request
+    sends api key as bearer token
+parsePrice (unit: pure parsing, no I/O)
+  validation
+    rejects negative amount
+```
+
+- **Run directly** (`/tdd`, or TDD in the main session): when the list adds a new seam or a new test file, confirm it with the user before the first test, and write no test at an unconfirmed seam. Otherwise show the list and proceed.
+- **Run under a plan** (the `dev-loop` implementer, a `writing-plans` task): the seams and layers the plan lists count as agreed. Write the list from them. If the plan lists no seams for a behaviour task, return `NEEDS_CONTEXT` rather than picking your own; a task marked `Seams: none — <why>` needs no test.
+
+The list holds names, not tests. Tests are still written one at a time (see horizontal slicing, below), and the list grows as each cycle teaches you something.
+
+## Outside-in: start at the boundary
+
+When a slice crosses a boundary, run two loops:
+
+1. **Outer:** write the test at the outermost seam and watch it fail: end-to-end when the slice is a user journey the layer table sends there, integration otherwise. It stays red while you work.
+2. **Inner:** drive the logic behind it with unit tests, one Red → Green → Refactor cycle each.
+3. **Close:** the outer test goes green once the inner work is done. While it's still red, its failure names the next unit test to write.
+
+A slice of pure logic runs only the inner loop.
 
 ## Red → Green → Refactor
 
@@ -47,28 +73,7 @@ RED  ──▶ verify-red ──▶ GREEN ──▶ verify-green ──▶ REFAC
 
 ### 1. RED — write the test
 
-One behavior, at an agreed seam. Clear name. Real code, not mocks (see [mocking.md](mocking.md) for the boundaries where a mock is right).
-
-```rust
-// Good — tests behavior, has a clear name
-#[test]
-fn retry_succeeds_after_two_failures() {
-    let mut attempts = 0;
-    let op = || { attempts += 1; if attempts < 3 { Err("fail") } else { Ok("ok") } };
-    assert_eq!(retry(op, 3), Ok("ok"));
-    assert_eq!(attempts, 3);
-}
-```
-
-```rust
-// Bad — vague name, tests the mock not the behavior
-#[test]
-fn retry_works() {
-    let mock = Mock::new().fail().fail().succeed();
-    retry(mock, 3);
-    assert_eq!(mock.calls(), 3);
-}
-```
+One behaviour from the test list, at its agreed seam and layer. Name, place, and shape it as the standards' examples do. Real code, not mocks: double only the boundaries (see Test doubles in `~/.claude/standards/testing.md`).
 
 ### 2. Verify RED — watch it fail
 
@@ -110,24 +115,7 @@ If step 5 doesn't fail, the test isn't really catching the bug. Tighten it.
 
 ## Anti-patterns
 
-- **Implementation-coupled**: mocks internal collaborators, tests private functions, or verifies through a side channel (querying the database instead of using the interface). The tell: the test breaks when you refactor but behavior hasn't changed.
-- **Tautological**: the assertion recomputes the expected value the way the code does, so it passes by construction and can never disagree with the code. Expected values come from an independent source of truth: a known-good literal, a worked example, the spec.
-
-  ```rust
-  // Bad — recomputes the expected value the same way the code does
-  #[test]
-  fn total_sums_line_items() {
-      let items = vec![Item { price: 10 }, Item { price: 5 }];
-      let expected: u32 = items.iter().map(|i| i.price).sum();
-      assert_eq!(total(&items), expected);
-  }
-
-  // Good — expected value is an independent, known literal
-  #[test]
-  fn total_sums_line_items() {
-      assert_eq!(total(&[Item { price: 10 }, Item { price: 5 }]), 15);
-  }
-  ```
+What makes a single test bad (coupled to the implementation, or tautological) lives under Shape of a test in `~/.claude/standards/testing.md`. The anti-pattern in the process itself:
 
 - **Horizontal slicing**: writing all the tests first, then all the implementation. Bulk tests verify _imagined_ behavior: they test the _shape_ of things rather than what callers see, go insensitive to real changes, and lock in test structure before you understand the implementation. One slice at a time instead.
 
@@ -149,11 +137,11 @@ If step 5 doesn't fail, the test isn't really catching the bug. Tighten it.
 - **Never** make a test pass by weakening the assertion. Tighten the code, not the test.
 - **Never** declare a bug fix complete without the revert-and-fail-again step (regression proof).
 - **Never** combine multiple behaviors in one test. One test, one behavior.
-- **Never** mock what you're testing. Mock the boundary, not the unit ([mocking.md](mocking.md)).
-- **Never** write a test at a seam nobody agreed on.
+- **Never** mock what you're testing. Mock the boundary, not the unit.
+- **Never** write a test at a new seam nobody agreed on, or before its layer is decided.
 - **Never** compute a test's expected value the way the code computes it.
 - **Never** write a batch of tests ahead of the code. One slice at a time.
 
 ---
 
-Seams, anti-patterns, vertical slicing and [mocking.md](mocking.md) adapted from `tdd` in [mattpocock/skills](https://github.com/mattpocock/skills), Copyright (c) 2026 Matt Pocock, MIT License.
+Seams, horizontal and vertical slicing adapted from `tdd` in [mattpocock/skills](https://github.com/mattpocock/skills), Copyright (c) 2026 Matt Pocock, MIT License.

@@ -43,7 +43,7 @@ Every task uses this shape:
 ### Task N — <what it delivers>
 
 **Files:** Create `path`, Modify `path`
-**Seams:** <the public interfaces its tests go through — `POST /login`, `Session::expires_at`>
+**Seams:** <the public interfaces its tests go through, each with its layer — `POST /login` (integration), `Session::expires_at` (unit)>
 **Acceptance criteria:**
 - [ ] <observable outcome>
 - [ ] <observable outcome>
@@ -52,7 +52,7 @@ Every task uses this shape:
 **Commit:** `<feat|fix|chore>: <subject>`
 ````
 
-**Seams** count as agreed for `tdd`: the implementer tests there and nowhere else, and stops with `NEEDS_CONTEXT` when a task has none. A task with no behaviour (config, a rename) says `Seams: none — <why>`.
+**Seams** count as agreed for `tdd`: the implementer tests there and nowhere else, and stops with `NEEDS_CONTEXT` when a task has none. Pick each seam's layer from the layer table in `~/.claude/standards/testing.md`. A task with no behaviour (config, a rename) says `Seams: none — <why>`.
 
 ## 4. Final verification
 
