@@ -9,20 +9,20 @@ With no existing suite, start one in `e2e/` at the repo root:
 ```
 e2e/
 ├── playwright.config.ts
-├── auth/          storage-state paths shared by config and setup
+├── globalSetup.ts signs each role in once per run
+├── auth/          storage-state paths shared by config and global setup
 ├── pages/         BasePage.ts, <Name>Page.ts
 ├── components/    BaseComponent.ts, <Name>Component.ts
 ├── apiRequests/   BaseRequests.ts, <Area>Requests.ts
 ├── fixtures/      <area>Fixtures.ts
 ├── data/          types and builders for test data
 └── tests/
-    ├── setup/     <role>.setup.ts
     ├── <feature>/ <name>.spec.ts
     └── api/       <name>.api.ts
 ```
 
 - A file holding a class is PascalCase, named exactly for its class: `OrdersPage.ts`, `OrderCardComponent.ts`, `OrdersRequests.ts`.
-- Every other file is camelCase: specs (`orders.spec.ts`), fixtures (`ordersFixtures.ts`), data, and config.
+- Every other file is camelCase: specs (`orders.spec.ts`), fixtures (`ordersFixtures.ts`), data, config, and `globalSetup.ts`.
 - One class per file, default-exported.
 - `.spec.ts` tests run in a browser. `.api.ts` tests run in their own project, with no browser.
 
@@ -227,7 +227,7 @@ export default class OrdersRequests extends BaseRequests {
 ## Fixtures
 
 - One fixtures file per area extends `test` with its pages and request objects and re-exports `expect`. An area builds on the fixtures it needs: `ordersFixtures` extends `authFixtures`.
-- Specs and setup files import `test` and `expect` from a fixtures file, never from `@playwright/test`. They never construct page objects or touch `page` directly.
+- Specs import `test` and `expect` from a fixtures file, never from `@playwright/test`. They never construct page objects or touch `page` directly.
 - Fixtures construct page objects but never navigate. The test calls `goto()`.
 - A fixture that tracks created data deletes it after `use`, so cleanup runs even when a test fails.
 
@@ -282,8 +282,10 @@ export { expect };
 
 ## Auth and config
 
-- One setup project per role signs in through the login page object and saves the storage state through the `context` fixture.
-- Every other project depends on it and loads that state. The path lives in one module, shared by the config and the setup.
+- `globalSetup` signs each role in once per run through the login page object and saves one storage state per role. Projects load it with `use.storageState`, and the paths live in one module shared by both.
+- Global setup gets no fixtures and no `use` options. It launches its own browser with `baseURL` and `launchOptions` read from the config, and it's the one place that constructs page objects itself.
+- It records a trace and saves it only on failure, since a failed global setup leaves no report.
+- Point `globalSetup` at a path string. `require.resolve` fails in an ESM config.
 - `forbidOnly` and a single retry on CI only. Traces are kept on failure.
 
 ```ts
@@ -293,33 +295,48 @@ import { CUSTOMER_STORAGE_STATE } from './auth/storageStates';
 
 export default defineConfig({
   testDir: './tests',
+  globalSetup: './globalSetup.ts',
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  use: { baseURL: process.env.BASE_URL ?? 'http://localhost:3000', trace: 'retain-on-failure' },
+  use: {
+    baseURL: process.env.BASE_URL ?? 'http://localhost:3000',
+    storageState: CUSTOMER_STORAGE_STATE,
+    trace: 'retain-on-failure',
+  },
   projects: [
-    { name: 'setup', testMatch: /.*\.setup\.ts/ },
-    {
-      name: 'chromium',
-      testMatch: /.*\.spec\.ts/,
-      dependencies: ['setup'],
-      use: { ...devices['Desktop Chrome'], storageState: CUSTOMER_STORAGE_STATE },
-    },
-    { name: 'api', testMatch: /.*\.api\.ts/, dependencies: ['setup'], use: { storageState: CUSTOMER_STORAGE_STATE } },
+    { name: 'chromium', testMatch: /.*\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'api', testMatch: /.*\.api\.ts/ },
   ],
 });
 ```
 
 ```ts
-// tests/setup/customer.setup.ts
-import { CUSTOMER_STORAGE_STATE } from '../../auth/storageStates';
-import { test as setup } from '../../fixtures/ordersFixtures';
+// globalSetup.ts
+import { chromium, type FullConfig } from '@playwright/test';
+import { CUSTOMER_STORAGE_STATE } from './auth/storageStates';
+import LoginPage from './pages/LoginPage';
+import OrdersPage from './pages/OrdersPage';
 
-setup('sign in as a customer', async ({ loginPage, ordersPage, context }) => {
-  await loginPage.goto();
-  await loginPage.signIn('reader@example.com', 'test-password');
-  await ordersPage.assertDisplayed();
-  await context.storageState({ path: CUSTOMER_STORAGE_STATE });
-});
+export default async function globalSetup(config: FullConfig): Promise<void> {
+  const { baseURL, launchOptions } = config.projects[0].use;
+  const browser = await chromium.launch(launchOptions);
+  const context = await browser.newContext({ baseURL });
+  const page = await context.newPage();
+  await context.tracing.start({ screenshots: true, snapshots: true });
+
+  try {
+    const loginPage = new LoginPage(page);
+    await loginPage.goto();
+    await loginPage.signIn('reader@example.com', 'test-password');
+    await new OrdersPage(page).assertDisplayed();
+    await context.storageState({ path: CUSTOMER_STORAGE_STATE });
+  } catch (error) {
+    await context.tracing.stop({ path: 'test-results/globalSetupTrace.zip' });
+    throw error;
+  } finally {
+    await browser.close();
+  }
+}
 ```
 
 ## Specs
