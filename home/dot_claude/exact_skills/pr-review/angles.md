@@ -1,6 +1,12 @@
 # pr-review angles
 
-pr-review §4 dispatches one `review-finder` per angle below, all in parallel; §7 dispatches `sweep` once the rest are verified. The judge pastes the angle's section into the finder's prompt. Every finder reads the whole diff, and its angle decides what it hunts. Two angles flagging the same line for different reasons both report it.
+pr-review §4 dispatches the finders in its depth's row below, all in parallel, and pastes each finder's angle sections into its prompt; at `deep`, §7 dispatches `sweep` once the rest are verified. Every finder reads the whole diff, and its angles decide what it hunts. Two angles flagging the same line for different reasons both report it.
+
+| Depth | Finders, one per group of angles |
+|---|---|
+| `quick` | `line` `pitfalls` `state` `safety` · `removed` `callers` `tests-spec` `conventions` · `excess` `cleanup` |
+| `standard` | `line` `pitfalls` · `removed` `callers` · `state` `safety` · `tests-spec` `conventions` · `excess` `cleanup` |
+| `deep` | each angle alone, then `sweep` |
 
 Defect angles report `Kind: defect`; `excess` and `cleanup` report `Kind: excess`.
 
@@ -84,7 +90,7 @@ A rule can *mandate* something that looks like excess (a required error enum, a 
 
 In `Failure scenario`, state the concrete cost: what is duplicated, wasted, or harder to maintain.
 
-## sweep — gaps (§7 only)
+## sweep — gaps (§7, `deep` only)
 
 You have the verified list. Re-read the diff and the enclosing functions looking **only** for defects not already on it. Don't re-derive or re-confirm anything already listed; your job is gaps. Focus on what the first pass tends to miss:
 

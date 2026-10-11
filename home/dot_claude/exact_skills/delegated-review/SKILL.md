@@ -15,7 +15,7 @@ Two review skills overlap. Choose deliberately:
 
 | Skill | Who reviews | Cost | Use when |
 |---|---|---|---|
-| `pr-review` | A panel of Claude finder agents (one per review angle), a verifier agent per finding, and your ruling on each | ~10 finders + a verifier per candidate | Routine review of your branch or a PR |
+| `pr-review` | A panel of Claude finder agents covering every review angle, verifier agents, and your ruling on each | 3–10 finders by depth (5 at `standard`), plus verifiers | Routine review of your branch or a PR |
 | **`delegated-review`** (this) | One GPT-5.6 subagent | 1 subagent | You want an independent model's read before shipping |
 
 If the user just said "review my branch" with no hint of independence, that is `pr-review`. This skill is for when they want a *different model family* to look.

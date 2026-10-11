@@ -3,7 +3,7 @@
 Measures how many planted defects a review cycle finds, and how much noise it reports alongside them. Each review runs in its own fresh headless Claude Code session, so it never sees the answer key or another run's output. It compares:
 
 - `code-review`: the built-in `/code-review` (alias `/review`) at `max`, uncapped.
-- `dev-loop`: round 1 of `/dev-loop`'s review cycle, i.e. `pr-review` with dev-loop's default reviewers, judged by its own session.
+- `dev-loop`: round 1 of `/dev-loop`'s review cycle, i.e. `pr-review` at dev-loop's default depth, judged by its own session.
 
 ## Fixtures
 

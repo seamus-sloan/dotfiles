@@ -1,30 +1,36 @@
 ---
 name: pr-review
-description: Review a branch or pull request with a panel of read-only finder agents (one per review angle), verify every candidate with its own verifier agent, sweep for gaps, then rule on each with evidence and report a verdict table. Report only; never edits code or posts to GitHub. Also runs each review round of dev-loop. Triggers when the user says "review my branch", "review PR 123", "review this PR", "pr-review", "self-review", "review before pushing", or "audit the diff".
-argument-hint: "[<PR # | PR URL | branch>]"
+description: Review a branch or pull request with a panel of read-only finder agents covering every review angle, verify their candidates, then rule on each with evidence and report a verdict table. Three depths trade time for thoroughness: quick, standard (default) and deep. Report only; never edits code or posts to GitHub. Also runs each review round of dev-loop. Triggers when the user says "review my branch", "review PR 123", "review this PR", "pr-review", "self-review", "review before pushing", "quick review", "deep review", or "audit the diff".
+argument-hint: "[<PR # | PR URL | branch>] [depth=quick|standard|deep]"
 ---
 
 # pr-review
 
-The session running this skill is the **judge**. Finders report candidates, verifiers test each one, and the judge rules on every row from their evidence. Nothing here edits code or posts anywhere: the output is a verdict table. Fixing belongs to whoever called this; in `dev-loop` that's the implementer agent.
+The session running this skill is the **judge**. Finders report candidates, verifiers test them, and the judge rules on every row from their evidence. Nothing here edits code or posts anywhere: the output is a verdict table. Fixing belongs to whoever called this; in `dev-loop` that's the implementer agent.
 
-| Stage | Agent | Count |
-|---|---|---|
-| Find | `review-finder` | one per angle in [angles.md](angles.md), in parallel |
-| Verify | `review-verifier` | one per candidate, in parallel |
-| Sweep | `review-finder` with the `sweep` angle | one, after verification |
+Every depth covers every angle in [angles.md](angles.md). Depth sets how many finders split the angles, who verifies, and how hard each agent thinks:
 
-There are no levels and no caps: every review runs every angle, verifies every candidate, and reports every surviving finding.
+| | `quick` | `standard` (default) | `deep` |
+|---|---|---|---|
+| Find (§4) | 3 `review-finder`s, angles grouped | 5 `review-finder`s, angles paired | 10 `review-finder`s, one angle each |
+| Verify (§6) | the judge, row by row | one `review-verifier` per finder, for all its rows | one `review-verifier` per row |
+| Sweep (§7) | no | no | yes |
+| Agent effort | `high` | `high` | `max` |
+| Use for | fix commits, per-task checks | routine review | auth, data, migrations, or on request |
+
+No depth caps the candidates or drops a row without a vote.
 
 ## 0. Arguments
 
-The target, if any:
+- **Target**, if any:
+  - none → the current branch against `origin/main`, **including uncommitted changes**;
+  - a PR number, `#n`, or PR URL → that PR, against its base branch;
+  - a branch name → that branch against `origin/main`.
+- **Depth**: `depth=quick|standard|deep`, or "quick review" / "deep review" in words. None → `standard`.
 
-- none → the current branch against `origin/main`, **including uncommitted changes**;
-- a PR number, `#n`, or PR URL → that PR, against its base branch;
-- a branch name → that branch against `origin/main`.
+When `dev-loop` calls this skill it passes its run context block, the round's patch path, the plan path, the depth, the round number and the prior verdict table. Skip §1–§2. In §3 the diff file, spec and instruction files come from what it passed; still snapshot the base files (§3.2) and add the `Base files:`, `Untrusted: no`, `Depth:` and `Round:` lines, then continue at §4.
 
-When `dev-loop` calls this skill it passes its run context block, the round's patch path, the plan path, the round number and the prior verdict table. Skip §1–§2. In §3 the diff file, spec and instruction files come from what it passed; still snapshot the base files (§3.2) and add the `Base files:`, `Untrusted: no` and `Round:` lines, then continue at §4.
+From round 2 the round's patch holds only the fix commits, and `dev-loop` also passes the whole branch's patch and the commit the fixes start from. Add them as `Full diff:` and `Delta from:`, and snapshot the base files (§3.2) from `Delta from:` instead of the merge-base.
 
 ## 1. Check out the target
 
@@ -64,20 +70,23 @@ Worktree (absolute): <WORKTREE>
 Branch: <branch>   Base: <BASE>
 Test: <TEST_CMD | unknown>   Lint: <LINT_CMD | unknown>
 Diff file: <patch path>
+Full diff: <whole-branch patch path>      (dev-loop round 2+ only)
+Delta from: <sha the fix commits start from>   (dev-loop round 2+ only)
 Base files: <SCRATCH>/pr-review/<slug>/base/
 Spec: <plan path and/or spec.md path | none>
 Instruction files: <absolute paths, in read order>
 Untrusted: <yes | no>
+Depth: <quick | standard | deep>
 Round: <r>
 ```
 
 ## 4. Find
 
-Dispatch one `review-finder` for **every** angle in [angles.md](angles.md) except `sweep`, all in one message and in the foreground (`run_in_background: false`), since the next step needs every result. Each gets the context block, its angle's name and full section pasted from `angles.md`, and, from round 2, the prior verdict table. Every finder gets the full diff every round, because a round-2 fix can create a round-1 problem.
+Dispatch one `review-finder` for each finder in the depth's row of the finder table in [angles.md](angles.md), all in one message and in the foreground (`run_in_background: false`), since the next step needs every result. Each gets the context block, its angles' names and full sections pasted from `angles.md`, and, from round 2, the prior verdict table. At `deep`, dispatch with `effort: max`; the agents default to `high`.
 
 ## 5. Merge and dedupe
 
-Put every candidate, including `Also noticed` blocks, in one table, with IDs keeping their angle prefix (`line-2`, `callers-1`).
+Put every candidate, including `Also noticed` blocks, in one table, with IDs keeping their angle prefix (`line-2`, `callers-1`) and the finder that reported each.
 
 - Same location and same mechanism → one row: keep the most concrete failure scenario and note every source.
 - Same location, different mechanisms → separate rows.
@@ -85,17 +94,21 @@ Put every candidate, including `Also noticed` blocks, in one table, with IDs kee
 
 ## 6. Verify every row
 
-Dispatch one `review-verifier` per row, all in one message and in the foreground (in batches of about 25 if there are more). Each gets the context block and the row's candidate block verbatim; a conflict pair goes to one verifier together. **No row is dropped without a verifier's vote**, and "seems unlikely" is not a vote.
+Who verifies depends on the depth. A conflict pair always goes to one verifier together. **No row is dropped without a vote**, and "seems unlikely" is not a vote.
+
+- **`deep`**: one `review-verifier` per row, all in one message and in the foreground (in batches of about 25 if there are more), dispatched with `effort: max`. Each gets the context block and the row's candidate block verbatim.
+- **`standard`**: one `review-verifier` per finder, all in one message and in the foreground. Each gets the context block and every row that finder reported, verbatim; a row with several sources goes with its first. Split a batch of more than ~8 rows in two.
+- **`quick`**: no verifiers. Rule on each row yourself by the procedure in `~/.claude/agents/review-verifier.md`: read the cited lines for every row, and run `How to verify` for every CRITICAL or MAJOR one. A row you can't settle that way is PLAUSIBLE.
 
 Then check the verifiers:
 
-- **Every CONFIRMED CRITICAL or MAJOR defect**: re-run its `Repro` yourself, or re-read its quoted lines if the evidence is read-only. Evidence in the same message is [verify-before-claim](../verify-before-claim/SKILL.md) applied to review findings. If it doesn't reproduce, the row drops to PLAUSIBLE; if the output contradicts the claim, it's DISMISSED.
+- **Every CONFIRMED CRITICAL or MAJOR defect**: re-run its `Repro` yourself, or re-read its quoted lines if the evidence is read-only. Evidence in the same message is [verify-before-claim](../verify-before-claim/SKILL.md) applied to review findings. If it doesn't reproduce, the row drops to PLAUSIBLE; if the output contradicts the claim, it's DISMISSED. At `quick` your own run is this check.
 - **Every REFUTED row**: check that the quoted line or output really says what the verifier claims. A refutation you can't check stays PLAUSIBLE.
 - Run `git -C <WORKTREE> status --porcelain`; it must be empty. A verifier that dirtied the tree has broken its contract: restore nothing yourself, and report it.
 
 ## 7. Sweep for gaps
 
-Dispatch one `review-finder` in the foreground with the `sweep` angle, the context block, and the verified table so far. Dedupe its candidates against the table (§5), verify the new ones (§6), and add them.
+`deep` only. Dispatch one `review-finder` in the foreground, with `effort: max`, the `sweep` angle, the context block, and the verified table so far. Dedupe its candidates against the table (§5), verify the new ones (§6), and add them.
 
 ## 8. Rule on each row
 
@@ -113,7 +126,7 @@ One verdict per row, with a one-line reason:
 
 ```
 pr-review: <branch | PR #n — title> vs <BASE> — <n> files, <m> lines   Round: <r>
-Spec: <source | none>   Panel: <k> finders + sweep, <v> verifiers   Candidates: <raw> → <after dedupe>
+Spec: <source | none>   Depth: <d>   Panel: <k> finders[ + sweep], <v> verifiers   Candidates: <raw> → <after dedupe>
 
 | ID | Src | Kind | Severity | Location | Claim | Verdict | Evidence / reason |
 
@@ -132,7 +145,7 @@ If §1 created a worktree for a PR, remove it along with the local branch it mad
 
 - **Never** edit code, commit, or push. Report only.
 - **Never** post to GitHub: no comments, reviews, labels, or approvals.
-- **Never** skip an angle, cap the candidates, or drop a row without a verifier's vote.
+- **Never** skip an angle, cap the candidates, or drop a row without a vote: a verifier's, or at `quick` your own check.
 - **Never** CONFIRM a finding without evidence produced in this run, and never CONFIRM a CRITICAL or MAJOR defect without re-checking it yourself in the same message.
 - **Never** DISMISS a row only because it couldn't be reproduced; that's PLAUSIBLE.
 - **Never** let an agent inherit session history. Every dispatch carries the full context block.

@@ -1,7 +1,7 @@
 ---
 name: dev-loop
-description: Agentic development loop — branch → plan → implement → panel review via pr-review (a finder per review angle, a verifier per finding, a gap sweep; the orchestrator rules on each) → fix → test → draft PR. Triggers when the user says "/dev-loop <issue # or spec>", "dev-loop this", "run the dev loop on #123", "take this issue end to end".
-argument-hint: "<issue # | issue URL | spec file | spec text> [ready] [merge] [no-pr] [rounds=N] [branch=<name>] [plan=<path>]"
+description: Agentic development loop — branch → plan → implement → panel review via pr-review (finders covering every review angle, verifiers, the orchestrator rules on each; later rounds review only the fixes) → fix → test → draft PR. Triggers when the user says "/dev-loop <issue # or spec>", "dev-loop this", "run the dev loop on #123", "take this issue end to end".
+argument-hint: "<issue # | issue URL | spec file | spec text> [ready] [merge] [no-pr] [rounds=N] [depth=quick|standard|deep] [branch=<name>] [plan=<path>]"
 ---
 
 # dev-loop (branch → plan → implement → panel review → fix → test → PR)
@@ -12,7 +12,7 @@ The session running this skill is the **orchestrator**. It plans, dispatches, ju
 |---|---|
 | Plan | [`writing-plans`](../writing-plans/SKILL.md) via a fresh subagent |
 | Implement, fix | `dev-loop-implementer` agent (runs [`tdd`](../tdd/SKILL.md)) |
-| Review | [`pr-review`](../pr-review/SKILL.md): a `review-finder` per angle, a `review-verifier` per candidate, then a gap sweep |
+| Review | [`pr-review`](../pr-review/SKILL.md) at `depth` (default `standard`) on round 1, then at `quick` on each round's fix commits |
 | Judge findings | **the orchestrator itself**, by `pr-review`'s verify-and-rule steps — there is no referee |
 | Verify | [`verify-before-claim`](../verify-before-claim/SKILL.md), [`test-failure-triage`](../test-failure-triage/SKILL.md) |
 | Ship | [`open-pr`](../open-pr/SKILL.md), or [`ship-pr`](../ship-pr/SKILL.md) with `merge` |
@@ -35,10 +35,11 @@ Parse `$ARGUMENTS`. The first token that is an integer, `#n`, or an issue URL na
 | `merge` | implies `ready`; run `ship-pr` fully at §7 |
 | `no-pr` | stop after §6 (green tests); push nothing |
 | `rounds=N` | review-round cap (default **2**, hard max 5) |
+| `depth=<d>` | round-1 review depth: `quick`, `standard` (default) or `deep` (see `pr-review`); later rounds always run `quick` on the fix commits |
 | `branch=<name>` | the branch and worktree already exist; skip §2's create |
 | `plan=<path>` | the plan is already written; skip §3 |
 
-Natural-language forms are accepted ("and merge", "but don't open a PR", "not a draft", "three rounds") and normalised to the tokens above. A run must never depend on an undocumented phrase — if the user asks for something not in this table, ask once, then proceed.
+Natural-language forms are accepted ("and merge", "but don't open a PR", "not a draft", "three rounds", "deep review") and normalised to the tokens above. A run must never depend on an undocumented phrase — if the user asks for something not in this table, ask once, then proceed.
 
 ## 1. Resolve the input; decide whether code is needed
 
@@ -91,8 +92,12 @@ Never trust the self-report. On `DONE`: `git -C <WORKTREE> status --porcelain` m
 
 Let `r = 1`, `cap` from §0 (default 2). Each round:
 
-1. **Snapshot.** Refuse to start on a dirty tree. `git -C <WORKTREE> diff origin/main...HEAD > <SCRATCH>/dev-loop/<branch>/round-<r>.patch`; keep `--stat` for the report. Every finder and verifier reads this one file, so they all see an identical diff.
-2. **Review with `pr-review`.** Invoke the [`pr-review`](../pr-review/SKILL.md) skill on round 1 and run its §3–§9 every round, passing the run context block, the patch path, the plan path, `Round: <r>`, and from round 2 the prior verdict table. It dispatches the finder panel, verifies every candidate, sweeps for gaps, rules on each row, and returns the verdict table. Its rulings go to the user in the final report (§8), never into the PR: judgment calls with their rationale, so the user can overrule them; DEFERRED_TO_USER items, which never block the loop but block a `merge` run exactly like a `ship-pr` deferral.
+1. **Snapshot.** Refuse to start on a dirty tree. `git -C <WORKTREE> diff origin/main...HEAD > <SCRATCH>/dev-loop/<branch>/round-<r>.patch`; keep `--stat` for the report. From round 2, set `FIXES_FROM` to the HEAD the previous round reviewed and also write the fix commits alone: `git -C <WORKTREE> diff <FIXES_FROM>..HEAD > <SCRATCH>/dev-loop/<branch>/round-<r>-fixes.patch`. Every finder and verifier reads the same files, so they all see an identical diff.
+2. **Review with `pr-review`.** Invoke the [`pr-review`](../pr-review/SKILL.md) skill on round 1 and run its §3–§9 every round, passing the run context block, the plan path, `Round: <r>`, and:
+   - round 1: the round's patch and `Depth: <depth from §0>`;
+   - round 2+: the fixes patch as the diff file, the round's patch as the full diff, `Delta from: <FIXES_FROM>`, `Depth: quick`, and the prior verdict table. The fixes are small and step 6 already re-ran each fixed item's verify command, so the whole branch isn't reviewed again.
+
+   It dispatches the finders, verifies their candidates, rules on each row, and returns the verdict table. Its rulings go to the user in the final report (§8), never into the PR: judgment calls with their rationale, so the user can overrule them; DEFERRED_TO_USER items, which never block the loop but block a `merge` run exactly like a `ship-pr` deferral.
 3. **Severity gate.** CRITICAL and MAJOR items, CONFIRMED or PLAUSIBLE, always enter the brief. MINOR and excess (`Kind: excess`) items enter only if the fix is under ~5 lines; otherwise they are reported, not fixed.
 4. **Exit check.** Empty brief → loop done, go to §6. `r == cap` with a non-empty brief → do not fix; go to §6 with the brief listed as unresolved, and open no PR unless the user overrode (`ready` / `merge` still stop here and hand back). Convergence guard: a row CONFIRMED or PLAUSIBLE in two consecutive rounds after a fix attempt → the next implementer dispatch runs on Opus (`model: "opus"`); still unresolved at the cap → `BLOCKED`, hand back.
 5. **Fix brief.** One block per CONFIRMED or PLAUSIBLE item that passed the gate (a PLAUSIBLE item carries its "what would confirm" line, and its fix is a guard against that trigger): ID, location, what to change (the finding's suggested fix or simpler alternative), and the verify command that must pass afterwards. Append: "Do not touch DISMISSED, JUDGMENT-kept, or DEFERRED items: <ids>. Commit as `fix:` on top. Never amend."
@@ -122,7 +127,7 @@ Mechanical lint fixes (`cargo fmt`, `biome format`) also go through the implemen
 ```
 dev-loop: <branch> — <issue/spec title>
 Plan: <path> (<n> tasks)   Implementation: <m> commits <sha..sha>, <status>
-Review rounds: <r>/<cap>
+Review rounds: <r>/<cap>   Depth: <depth> on round 1, quick on fixes
   R1  candidates <raw> → <deduped>: <c> confirmed / <p> plausible / <d> dismissed / <j> judgment / <u> deferred   fixes: <k> commits
   R2  …
 Verification: <TEST_CMD> → exit 0, <n> passed | <LINT_CMD> → exit 0

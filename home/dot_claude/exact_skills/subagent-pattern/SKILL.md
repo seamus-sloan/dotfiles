@@ -131,7 +131,7 @@ Be terse. Don't comment on style — that's the next reviewer's job.
 
 ### Code-quality reviewer
 
-Run [pr-review](../pr-review/SKILL.md) §3–§9 on the task's commit: save `git show <sha>` to the scratchpad as the diff file, and use the plan task as the spec. Any CRITICAL or MAJOR row ruled CONFIRMED or PLAUSIBLE → REQUEST_CHANGES; otherwise APPROVE.
+Run [pr-review](../pr-review/SKILL.md) §3–§9 at `depth=quick` on the task's commit: save `git show <sha>` to the scratchpad as the diff file, and use the plan task as the spec. Any CRITICAL or MAJOR row ruled CONFIRMED or PLAUSIBLE → REQUEST_CHANGES; otherwise APPROVE.
 
 ## After all tasks pass
 

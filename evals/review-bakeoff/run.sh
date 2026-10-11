@@ -5,8 +5,8 @@
 #   run.sh <fixture> dev-loop [--src <dot_claude dir>]
 #
 # code-review  the built-in /code-review (alias /review) at max, uncapped
-# dev-loop     round 1 of dev-loop's review cycle (pr-review with dev-loop's
-#              default reviewers), judged by that session
+# dev-loop     round 1 of dev-loop's review cycle (pr-review at dev-loop's
+#              default depth), judged by that session
 # --src        review with the skills and agents in a chezmoi source tree
 #              (e.g. a worktree's home/dot_claude) instead of the installed ones
 #
@@ -85,7 +85,7 @@ case "$REVIEWER" in
     PROMPT="This is a review-only run of dev-loop's review cycle. Branch, plan and implementation are already done; do exactly what dev-loop §5 does for round 1 and nothing else: no fixing, no tests beyond what verification needs, no PR, no edits to the worktree. $SKILLS
 
 1. Snapshot the diff: git -C $WT diff $BASE...HEAD > $CTX/round-1.patch
-2. Run the round-1 review exactly as dev-loop §5 step 2 does, with dev-loop's default reviewers and Round: 1, passing this run context block, the patch path above, and the plan path:
+2. Run the round-1 review exactly as dev-loop §5 step 2 does, at dev-loop's default depth and Round: 1, passing this run context block, the patch path above, and the plan path:
 
 Worktree (absolute): $WT
 Branch: $BRANCH     Base: $BASE

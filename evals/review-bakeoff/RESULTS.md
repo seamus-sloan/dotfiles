@@ -3,7 +3,7 @@
 One round-1 review per cell (two for the old dev-loop), Claude Code 2.1.293, Opus 5.5 at `--effort max`, graded by `grade.sh` against the answer keys as they stand at this commit.
 
 - **old dev-loop**: `pr-review` with `review-prosecutor` + `review-defender`.
-- **new dev-loop**: `pr-review` with a `review-finder` per angle, a `review-verifier` per candidate, and a gap sweep.
+- **new dev-loop**: `pr-review` with a `review-finder` per angle, a `review-verifier` per candidate, and a gap sweep: what is now `depth=deep`. The `quick` and `standard` depths, and `standard` as dev-loop's default, came after these runs and are unmeasured.
 - **code-review**: the built-in `/code-review max --max-findings all`.
 
 ## Planted seeds
