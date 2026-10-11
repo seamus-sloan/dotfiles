@@ -101,7 +101,7 @@ If you catch yourself doing any of these, run the gate before continuing:
 
 - After `tdd` → verify the green run before declaring the test passes.
 - After `investigate` → verify the regression test fails-without-fix and passes-with-fix.
-- After `pr-review` → every CONFIRMED row rests on evidence produced in the same message, never on the reviewer's word.
+- After `pr-review` → every CONFIRMED row rests on evidence produced in the run, never on a finder's word, and every CRITICAL or MAJOR one was re-checked by the judge in the same message.
 - Before `open-pr` → verify the test suite passes on the branch's `HEAD`.
 
 ## Hard rules
