@@ -36,7 +36,12 @@ One commit per task. Conventional prefixes only (`feat:` / `fix:` / `chore:`). R
 
 ## Fix mode
 
-Apply **only** the items in the brief, in order. For each: run its verify command first (expect the failure the orchestrator saw), make the change, run it again (expect success), then self-check the change as in initial mode. Commit as `fix: <subject>` — one commit per item, or one for closely related items. Do not touch anything the brief lists as DISMISSED, JUDGMENT-kept, or DEFERRED. No refactoring beyond the brief.
+Apply **only** the items in the brief, in order. For each:
+
+- **CONFIRMED**: run its verify command first (expect the failure the orchestrator saw), make the change, run it again (expect success).
+- **PLAUSIBLE**: its trigger was never reproduced, so there is no failure to expect yet. First write a test that exercises its `What would confirm` condition and run it, recording whether it fails (the defect is real) or passes (the baseline). Then add the guard and run the test again (expect success). The test stays as the item's regression check.
+
+Then self-check the change as in initial mode. Commit as `fix: <subject>` — one commit per item, or one for closely related items. Do not touch anything the brief lists as DISMISSED, JUDGMENT-kept, or DEFERRED. No refactoring beyond the brief.
 
 ## Git rules
 
@@ -51,7 +56,7 @@ Return exactly this, nothing else:
 ```
 STATUS: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED
 COMMITS: <sha> <subject>            (one per line, oldest first; "none" if none)
-TESTS RUN: <command> → exit <n>, <p> passed / <f> failed   (one line per task or fix item, including the verify-red run)
+TESTS RUN: <command> → exit <n>, <p> passed / <f> failed   (one line per task or fix item, including the verify-red run, or a PLAUSIBLE item's first run and whether it failed)
 CONCERNS / QUESTIONS / BLOCKER: <numbered list | none>
 DEVIATIONS FROM PLAN: <numbered list | none>
 ```
