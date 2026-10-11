@@ -68,7 +68,7 @@ Issue/spec: <#n title | first line of the spec>
 
 ## 3. Plan
 
-Dispatch a fresh `general-purpose` subagent on Opus: "Apply `~/.claude/skills/writing-plans/SKILL.md` to the spec below. Write the plan to `<SCRATCH>/dev-loop/<branch>/plan.md`. Return the file map, the task titles with their seams, and any open questions." Include the issue body or spec and the run context block.
+Dispatch a fresh `general-purpose` subagent on Opus: "Apply `~/.claude/skills/writing-plans/SKILL.md` to the spec below. Write the plan to `<SCRATCH>/dev-loop/<branch>/plan.md`. Return the file map, the task titles with their seams, the risk pass, and any open questions." Include the issue body or spec and the run context block.
 
 Then:
 

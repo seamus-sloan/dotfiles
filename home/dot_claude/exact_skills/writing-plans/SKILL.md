@@ -54,7 +54,18 @@ Every task uses this shape:
 
 **Seams** count as agreed for `tdd`: the implementer tests there and nowhere else, and stops with `NEEDS_CONTEXT` when a task has none. A task with no behaviour (config, a rename) says `Seams: none — <why>`.
 
-## 4. Final verification
+## 4. Risk pass
+
+Review the plan before any code exists: most review findings are cheaper to plan out than to fix. Read the **Prevent** line of every angle in [pr-review's angles.md](../pr-review/angles.md) and apply each one to the tasks it touches. At minimum:
+
+- **Callers:** for every function, type, enum value, flag or file format the plan changes, grep its callers and consumers. Each one that must change goes in the file map and in a task's acceptance criteria.
+- **Removed behaviour:** for everything the plan deletes or replaces, name what it guaranteed and the task that keeps that guarantee.
+- **Spec coverage:** every spec item maps to the task that delivers and tests it.
+- **Out of scope:** name what an implementer might add that the spec doesn't ask for: options, flags, refactors.
+
+The rest become acceptance criteria where they apply: a boundary to test, a value to quote, a check-then-write to make atomic. After the tasks, add a `## Risk pass` section holding the spec → task map and an `Out of scope:` line.
+
+## 5. Final verification
 
 End every plan with the full test suite, lint, and type-check commands from the repo's instruction files, each with its expected result. Pushing and opening a PR belong to the caller, not the plan.
 
@@ -69,6 +80,7 @@ End every plan with the full test suite, lint, and type-check commands from the 
 - [ ] Every file in the map has a task, and every task's files are in the map.
 - [ ] Every behaviour task names its seams, acceptance criteria, and a verify command.
 - [ ] No placeholders, no undefined references.
+- [ ] The risk pass ran: changed symbols' callers are in the file map, every spec item maps to a task, and out of scope is named.
 - [ ] The plan ends with the final verification section.
 
 ## Hard rules
@@ -76,6 +88,7 @@ End every plan with the full test suite, lint, and type-check commands from the 
 - **Never** plan more than one subsystem in one plan.
 - **Never** write the implementation into the plan. Code blocks pin decisions only.
 - **Never** leave a behaviour task without seams.
+- **Never** skip the risk pass.
 - **Never** end without the final verification section.
 
 ---
