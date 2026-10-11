@@ -31,12 +31,20 @@ Invoke the **`open-pr`** skill. It picks the title, fills the body from the repo
   ```bash
   gh pr edit <pr> --add-label run_ui_tests
   ```
-- **Never request Copilot as a reviewer.** It's auto-attached by repo settings on this repo. No `--reviewer Copilot`, no `requested_reviewers` POST.
 - **Issue-closing keyword.** `open-pr` is responsible for putting a `Closes #<n>` (or `Fixes #<n>`) line in the body when the PR fully resolves a tracked issue — see its "Closing keyword" section. When ship-pr was invoked *for an issue* ("ship #1186", a pasted issue URL), confirm that line made it into the body before moving on; if it's missing, add it with `gh pr edit <pr> --body-file`, running `open-pr`'s saved-copy check (§8) first. Use `Part of #<n>` (no keyword) when the PR is only one sub-task of a larger issue, so the merge doesn't wrongly close the parent. This is what makes step 5's merge auto-close the issue.
 
 ## 2. Wait for Copilot's review
 
-Copilot is auto-added and posts its review a minute or two after open. **It reviews only once per PR** — it does not re-review after later pushes, so this wait applies to the *first* review only. Poll for a completed Copilot review on the PR (any commit).
+Some repos auto-attach Copilot as a reviewer and some don't, so first make sure it's on the PR, even when step 1 was skipped. About 30s after the PR opened (auto-attach isn't instant), check whether Copilot is already requested or has reviewed:
+
+```bash
+gh api "repos/<owner>/<repo>/pulls/<pr>/requested_reviewers" --jq '.users[].login'
+gh api "repos/<owner>/<repo>/pulls/<pr>/reviews" --jq '.[].user.login'
+```
+
+If neither lists a Copilot login, request it once: `gh pr edit <pr> --add-reviewer "@copilot"`. Never request it when it's already there, since a second request starts a second review. If the request fails because the repo has no Copilot code review, skip the wait and treat the review as **clean**.
+
+Copilot posts its review a few minutes after it's requested. **It reviews only once per PR** — it does not re-review after later pushes, so this wait applies to the *first* review only. Poll for a completed Copilot review on the PR (any commit).
 
 ```bash
 # Current head SHA
@@ -47,7 +55,7 @@ gh api "repos/<owner>/<repo>/pulls/<pr>/reviews" --paginate \
   --jq '.[] | select(.user.login | test("[Cc]opilot")) | {state, sha: .commit_id, submitted_at}'
 ```
 
-Poll roughly every 30–60s. Consider the review "landed" once any Copilot review exists on the PR. If after ~5 minutes there's still no Copilot review (it doesn't always comment on trivial diffs), treat the review as **clean** and move on — don't block forever.
+Poll roughly every 30–60s. Consider the review "landed" once any Copilot review exists on the PR. If after ~10 minutes there's still no Copilot review (large diffs take longer), treat the review as **clean** and move on — don't block forever — and say so in the final report.
 
 Also read any inline comments it left (the review can be `COMMENTED`/`CHANGES_REQUESTED` with diff-anchored notes) — those are what step 3 acts on.
 
@@ -121,6 +129,6 @@ Print a compact end-state summary: PR URL, merge status (merged / stopped-before
 - **Never amend or force-push a pushed commit.** Every fix — review-driven or CI-driven — lands as a fresh commit on top. A `git push` rejected as non-fast-forward means this rule was broken; recover with `git reset --soft origin/<branch>` and redo. (Same invariant as `resolve-pr-comments` §0.)
 - **Never merge with a deferral or push-back on a person's comment awaiting the user.** Those are the user's decisions; auto-merge is suspended until they're cleared. Bot comments dismissed by `resolve-pr-comments` don't block.
 - **Never merge over a red or falsely-skipped required check.** A `SKIPPED` E2E check on a UI diff is a missing label, not a pass.
-- **Never request Copilot as a reviewer** — it's auto-attached.
+- **Never request Copilot twice.** Request it only when it's neither requested nor has reviewed (step 2); a second request starts a second review.
 - **Never delete a merged branch another open PR still uses as its base.** Retarget that PR first, or GitHub closes it.
 - **Never invent a review or CI state.** Poll the real API; if a signal never arrives within the timeout, say so and act on the documented fallback, don't assume.
