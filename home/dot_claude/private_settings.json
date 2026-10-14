@@ -75,10 +75,10 @@
     "warp@claude-code-warp": true,
     "github@claude-plugins-official": true,
     "hey@37signals": true,
-    "toronto-slang@toronto-slang": true,
-    "vibemaxx@vibemaxx": true,
-    "precise@precise": true,
-    "skins@hellosverre-mods": true
+    "skins@hellosverre-mods": true,
+    "precise@claude-output-styles": true,
+    "vibemaxx@claude-output-styles": true,
+    "toronto-slang@claude-output-styles": true
   },
   "extraKnownMarketplaces": {
     "conorluddy": {
@@ -105,28 +105,16 @@
         "repo": "basecamp/claude-plugins"
       }
     },
-    "toronto-slang": {
-      "source": {
-        "source": "github",
-        "repo": "seamus-sloan/toronto-slang"
-      }
-    },
-    "vibemaxx": {
-      "source": {
-        "source": "github",
-        "repo": "seamus-sloan/vibemaxx"
-      }
-    },
-    "precise": {
-      "source": {
-        "source": "github",
-        "repo": "seamus-sloan/precise"
-      }
-    },
     "hellosverre-mods": {
       "source": {
         "source": "github",
         "repo": "hellosverre/claude-skins"
+      }
+    },
+    "claude-output-styles": {
+      "source": {
+        "source": "github",
+        "repo": "seamus-sloan/claude-output-styles"
       }
     }
   },
