@@ -79,7 +79,8 @@
     "precise@claude-output-styles": true,
     "vibemaxx@claude-output-styles": true,
     "toronto-slang@claude-output-styles": true,
-    "ponytail@ponytail": true
+    "ponytail@ponytail": true,
+    "impeccable@impeccable": true
   },
   "extraKnownMarketplaces": {
     "conorluddy": {
@@ -122,6 +123,12 @@
       "source": {
         "source": "github",
         "repo": "DietrichGebert/ponytail"
+      }
+    },
+    "impeccable": {
+      "source": {
+        "source": "github",
+        "repo": "pbakaus/impeccable"
       }
     }
   },
