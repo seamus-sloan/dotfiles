@@ -1,6 +1,57 @@
 # TypeScript
 
-How [testing.md](../testing.md) is spelled in TypeScript and JavaScript unit and integration tests. Playwright end-to-end tests follow [playwright.md](../playwright.md) instead.
+How [code.md](../code.md) and [testing.md](../testing.md) are spelled in TypeScript and JavaScript. Playwright end-to-end tests follow [playwright.md](../playwright.md) instead.
+
+## Code
+
+- **`unknown`, never `any`,** for data from outside: `JSON.parse`, response bodies, `postMessage`, environment variables, files, database rows.
+- **Validate with the repo's schema library** and infer the type from it: `type User = z.infer<typeof UserSchema>`. Never keep a schema, an interface, and a hand-written guard for the same shape, and don't add a schema library for one guard.
+- **No `as` and no non-null `!`.** Narrow instead, preferring a discriminant `switch`, then `in`, then `typeof` or `instanceof`, then a type guard. The exceptions are `as const` and the cast that brands a value its parse function just validated.
+- **`satisfies`, not `as`,** to check a literal against a type without widening it.
+- **A type guard checks every claim its type makes**, and is named `isX` or `hasX`.
+- **Exhaust unions** with `const _exhaustive: never = value` in the `default` arm.
+- **Brands are `string & { readonly __brand: 'UserId' }`.**
+- **Derive before declaring:** `Pick`, `Omit`, `Parameters`, `ReturnType`, `Awaited`, `typeof`.
+- **Pass one options object** when a caller could swap two arguments of the same type. Keep positional arguments in hot loops.
+- **No `console.log` in shipped code.** Use the project's logger.
+
+## Example: code
+
+```ts
+// src/payments.ts
+import { z } from 'zod';
+
+export type OrderId = string & { readonly __brand: 'OrderId' };
+
+const orderId = z
+  .string()
+  .min(1)
+  .transform((id) => id as OrderId);
+
+const PaymentEventSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('paid'), orderId, cents: z.number().int().positive() }),
+  z.object({ kind: z.literal('refunded'), orderId, reason: z.string() }),
+]);
+
+export type PaymentEvent = z.infer<typeof PaymentEventSchema>;
+
+export function parsePaymentEvent(body: unknown): PaymentEvent {
+  return PaymentEventSchema.parse(body);
+}
+
+export function summarize(event: PaymentEvent): string {
+  switch (event.kind) {
+    case 'paid':
+      return `order ${event.orderId} paid ${event.cents} cents`;
+    case 'refunded':
+      return `order ${event.orderId} refunded: ${event.reason}`;
+    default: {
+      const _exhaustive: never = event;
+      return _exhaustive;
+    }
+  }
+}
+```
 
 ## Runner
 
@@ -54,7 +105,6 @@ describe('parsePrice', () => {
 ```ts
 // integration/orders.test.ts
 import { createServer, type IncomingHttpHeaders, type Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { OrderClient } from '../src/orderClient';
 
@@ -72,7 +122,9 @@ async function startFakeApi(received: IncomingHttpHeaders[]): Promise<Server> {
 }
 
 function urlOf(server: Server): string {
-  return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const address = server.address();
+  if (address === null || typeof address === 'string') throw new Error('server is not listening on a TCP port');
+  return `http://127.0.0.1:${address.port}`;
 }
 
 function stop(server: Server): Promise<void> {
@@ -109,3 +161,7 @@ describe('POST /v1/orders', () => {
   });
 });
 ```
+
+---
+
+Code rules adapted from `typescript-best-practices` in [michael-denyer/pstack-claude](https://github.com/michael-denyer/pstack-claude), Copyright (c) 2026 Lauren Tan and Michael Denyer, MIT License.

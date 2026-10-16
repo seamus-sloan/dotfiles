@@ -9,13 +9,13 @@ How I want code written, in any repo, by any agent. Start here, then read only t
 3. **The file being edited:** a test added to an existing file matches that file's naming and shape.
 4. **These standards:** everything else, including every new test file.
 
-Between these files, a language file beats [testing.md](testing.md) on syntax: names, file locations, runners.
+Between these files, a language file beats [code.md](code.md) and [testing.md](testing.md) on syntax: names, file locations, runners.
 
 ## What to read
 
 | Task | Read |
 |---|---|
-| Writing or changing any code or config, tests included | [code.md](code.md) |
+| Writing or changing any code or config, tests included | [code.md](code.md), then the language file's Code section if it has one |
 | Writing or changing any test | [testing.md](testing.md), then the language file |
 | Writing or changing a Playwright test | the above, then [playwright.md](playwright.md) |
 
@@ -29,4 +29,4 @@ A language with no file follows [testing.md](testing.md) using its ecosystem's m
 
 ## Adding a language
 
-Give it the same sections as the others: runner, where tests live, naming, doubles, then one complete unit example and one complete integration example. Agents copy the examples more faithfully than they follow the rules, so the examples must obey every rule.
+Give it the same sections as the others: runner, where tests live, naming, doubles, then one complete unit example and one complete integration example. Once it has rules of its own for production code, a Code section and one code example go first. Agents copy the examples more faithfully than they follow the rules, so the examples must obey every rule.
