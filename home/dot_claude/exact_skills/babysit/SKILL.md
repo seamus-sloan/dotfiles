@@ -22,10 +22,9 @@ Claude Code analog of Cursor's built-in `/babysit`. The implementation is a loop
    ```
 
 2. **Triage in priority order.**
-   - Merge conflicts (`mergeStateStatus == DIRTY`): run the **fix-merge-conflicts** skill. Force-push only if the branch is yours and not shared.
+   - Merge conflicts (`mergeStateStatus == DIRTY`): merge the base branch in, then run the **fix-merge-conflicts** skill. Never force-push.
    - Failing checks (`statusCheckRollup` entries with `conclusion: FAILURE`): run the **fix-ci** skill. Root-cause the failure; fix the underlying code or test; commit; push.
-   - Review comments: run the **get-pr-comments** skill for the summary, then act only on feedback you actually agree with. When a comment has a single mechanical answer — a rename, a guard clause, a formatting nit — make the edit and quote the comment in the commit message. When it hinges on a judgement call, or you can't tell what's being asked, don't guess: leave it and reply with what you would have done.
-   - Review-bot comments (Bugbot and similar automation): classify fix/dismiss/ask before acting. Ask by default on security, data, and high-severity findings.
+   - Review comments, from people and bots: run the **resolve-pr-comments** skill.
 
 3. **Loop.** Use the Claude Code `loop` skill to pace re-checks. Pick the interval from what you're watching:
    - Active CI run: poll `gh pr checks --watch` (it blocks until checks finish, so no separate loop interval needed).
