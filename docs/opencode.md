@@ -22,9 +22,9 @@ Two things follow from that:
 - **Don't create `~/.config/opencode/AGENTS.md`.** It *replaces* `~/.claude/CLAUDE.md` rather than merging with it, so the moment it exists the Claude Code instructions stop loading. Use the `instructions` array in `opencode.jsonc` if extra files are ever needed.
 - **Don't symlink `skills/` into the opencode config dir.** opencode already reads `~/.claude/skills/`, and it requires skill names to be unique across every location — a second path to the same directory makes every skill a duplicate.
 
-`~/.claude/CLAUDE.md` does carry two lines opencode ignores: `@RTK.md` and the
-`@skills/open-pr/SKILL.md` reference. opencode does not expand `@` references in
-instruction files, so those read as literal text there.
+opencode does not expand `@` references in instruction files, so
+`~/.claude/CLAUDE.md` names skills and files in plain text rather than importing
+them with `@`.
 
 ## Wired up in this repo
 
