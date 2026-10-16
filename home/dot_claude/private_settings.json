@@ -78,7 +78,8 @@
     "skins@hellosverre-mods": true,
     "precise@claude-output-styles": true,
     "vibemaxx@claude-output-styles": true,
-    "toronto-slang@claude-output-styles": true
+    "toronto-slang@claude-output-styles": true,
+    "ponytail@ponytail": true
   },
   "extraKnownMarketplaces": {
     "conorluddy": {
@@ -115,6 +116,12 @@
       "source": {
         "source": "github",
         "repo": "seamus-sloan/claude-output-styles"
+      }
+    },
+    "ponytail": {
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail"
       }
     }
   },
