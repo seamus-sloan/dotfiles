@@ -5,8 +5,8 @@
 #
 #     [ -f "$HOME/.config/shell/aliases.zsh" ] && source "$HOME/.config/shell/aliases.zsh"
 
-# go install's default GOPATH is the same on every machine.
-export PATH="$HOME/go/bin:$PATH"
+# go install's and cargo install's default bin dirs are the same on every machine.
+export PATH="$HOME/go/bin:$HOME/.cargo/bin:$PATH"
 
 # Flush the DNS cache: macOS's resolver, or systemd-resolved on Linux.
 if [[ $OSTYPE == darwin* ]]; then
