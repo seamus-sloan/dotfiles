@@ -3,3 +3,9 @@
     type = "git-repo"
     url = "git@github.com:seamus-sloan/dotfiles-ssh.git"
     refreshPeriod = "168h"
+# Only tasteskill's main skill; the plugin would add twelve more, some that fight ponytail.
+[".claude/skills/design-taste-frontend"]
+    type = "archive"
+    url = "https://github.com/Leonxlnx/taste-skill/archive/f624f37a8c650b9cc550253104925efe4c8de246.tar.gz"
+    stripComponents = 3
+    include = ["*/skills/taste-skill/**"]
