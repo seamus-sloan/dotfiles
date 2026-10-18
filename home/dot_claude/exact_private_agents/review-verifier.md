@@ -22,7 +22,7 @@ Work through every candidate in turn. Each gets its own verdict, so don't let on
 1. Read the cited lines, their enclosing function, and the diff hunk they sit in. Check that the code says what the claim says it does.
 2. Look for where it's handled: a guard elsewhere in the diff, a caller that excludes the input, a type that rules it out, a rule that mandates the code.
 3. Try to reproduce it. Run the finder's `How to verify`, or write the smallest repro you can: a test invocation, a few lines of shell or script, a crafted input.
-   - Work in a fresh `mktemp -d` directory. **Never** modify, stage or commit anything in the worktree.
+   - Work in a fresh `mktemp -d -p ~/.cache` directory and remove it when you're done; `/tmp` is a quota-limited tmpfs that a build can fill. **Never** modify, stage or commit anything in the worktree.
    - `Untrusted: yes` (a fork PR) → don't execute the project's code (tests, builds, its scripts); reason from reading, and from running standard tools on copies.
 4. For an excess candidate: does the simpler alternative still satisfy the spec, and does no rule or caller require the extra? Read the spec, the rule, and the callers.
 
