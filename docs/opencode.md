@@ -31,25 +31,20 @@ them with `@`.
 | What | Claude Code | opencode |
 |---|---|---|
 | Commands | `~/.claude/commands/*.md` | `symlink_commands` → `~/.claude/commands`; no native fallback, and the `$ARGUMENTS` / `$1` / `@file` / `` !`cmd` `` syntax is compatible |
-| Destructive-command guard | `hooks/careful.sh` (`PreToolUse`) | `permission.bash` rules in `opencode.jsonc` |
+| Destructive-command guard | none; auto mode's classifier covers it | `permission.bash` rules in `opencode.jsonc` |
 | Session titles | `hooks/session-title.sh` (`UserPromptSubmit` + `PostToolUse`) | `plugins/session-title.js` |
 | Project codes | `~/.claude/repo-codes` | same file, via the shared `hooks/repo-code.sh` |
 
 ### Destructive-command guard
 
-Claude Code's hook returns `permissionDecision: "ask"` from `PreToolUse`.
 opencode has a `permission.ask` plugin hook, but it fires *after* the config
 ruleset has already decided to ask — a plugin cannot escalate an
 already-allowed call. So the patterns are expressed as native
 `permission.bash` rules instead.
 
-Consequences of the swap:
-
 - Rules are glob patterns, not regex. `*DROP TABLE*` needs a lowercase twin because the matcher is case-sensitive.
 - The last matching rule wins, so ordering is load-bearing: blanket `allow`, then the destructive patterns, then the safe-list that pulls `node_modules`-style build output back out.
-- No custom reason string on the prompt. opencode shows which command matched, which covers most of what the hook's reason line said.
-
-Keep the rule list and `careful.sh` in sync when either changes.
+- No custom reason string on the prompt. opencode shows which command matched.
 
 ### Session titles
 
