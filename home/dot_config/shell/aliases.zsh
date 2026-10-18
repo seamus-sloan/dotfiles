@@ -1,7 +1,7 @@
 # Shared shell aliases — synced across machines via chezmoi (~/Repos/dotfiles).
 #
-# Source this from ~/.zshrc (which stays machine-local, since it holds
-# per-machine PATH exports):
+# Source this from ~/.zshrc or ~/.bashrc (which stay machine-local, since they
+# hold per-machine PATH exports), so everything here must run in zsh and bash:
 #
 #     [ -f "$HOME/.config/shell/aliases.zsh" ] && source "$HOME/.config/shell/aliases.zsh"
 
@@ -20,7 +20,7 @@ alias sw='wt switch'
 # Locally remove worktrees and branches already in the default branch, keeping fresh scaffolds.
 _fresh_prune_integrated() {
     if ! command -v jq >/dev/null; then
-        print -u2 "fresh: jq not found — skipping integrated-branch cleanup"
+        echo "fresh: jq not found — skipping integrated-branch cleanup" >&2
         return 0
     fi
 
@@ -29,19 +29,15 @@ _fresh_prune_integrated() {
     json="$(wt --config-set list.json-schema=2 list --format json --branches 2>/dev/null)" || return 0
 
     local default_branch
-    default_branch=$(print -r -- "$json" | jq -r '.items[] | select(.display.state == "is_main") | .branch')
+    default_branch=$(printf '%s\n' "$json" | jq -r '.items[] | select(.display.state == "is_main") | .branch')
     [[ -n $default_branch ]] || return 0
 
-    local -a candidates
-    candidates=(${(f)"$(print -r -- "$json" \
-        | jq -r --arg main "$default_branch" \
-            '.items[] | select(.branch != $main) | .branch')"})
-
     local b
-    for b in $candidates; do
+    # Read from fd 3 so `wt remove` keeps the terminal on stdin.
+    while IFS= read -r b <&3; do
         # Already in the default branch: --is-ancestor for fast-forwards, `integrated` for squash and rebase.
         git merge-base --is-ancestor "$b" "$default_branch" 2>/dev/null \
-            || print -r -- "$json" | jq -e --arg b "$b" \
+            || printf '%s\n' "$json" | jq -e --arg b "$b" \
                 '.items[] | select(.branch == $b) | select(.display.state == "integrated")' >/dev/null \
             || continue
 
@@ -50,7 +46,7 @@ _fresh_prune_integrated() {
 
         # No -D or -f: wt refuses anything that would lose work.
         wt remove "$b"
-    done
+    done 3< <(printf '%s\n' "$json" | jq -r --arg main "$default_branch" '.items[] | select(.branch != $main) | .branch')
 }
 
 # Fetch, fast-forward, prune landed branches, then rebase live stacks.
@@ -72,12 +68,12 @@ typeset -gA ZOXIDE_PINS=(
     mock        "$HOME/Repos/mock-controller"
 )
 
-# Pins first, then zoxide's own z; source after `zoxide init zsh` or it's clobbered.
+# Pins first, then zoxide's own z; source after `zoxide init` or it's clobbered.
 z() {
     if (( $# == 1 )) && [[ -n ${ZOXIDE_PINS[$1]-} ]]; then
         local dest=${ZOXIDE_PINS[$1]}
         if [[ ! -d $dest ]]; then
-            print -u2 "z: pinned '$1' -> $dest (no such directory)"
+            echo "z: pinned '$1' -> $dest (no such directory)" >&2
             return 1
         fi
         __zoxide_cd "$dest"
