@@ -1,5 +1,6 @@
 {
   "includeCoAuthoredBy": false,
+  "remoteControlAtStartup": true,
   "permissions": {
     "allow": [
       "Bash(gh pr merge:*)"
