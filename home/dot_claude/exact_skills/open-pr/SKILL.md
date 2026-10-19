@@ -1,6 +1,6 @@
 ---
 name: open-pr
-description: Recipe for opening a GitHub pull request via `gh pr create` — title format derived from branch shape, a terse body from the repo's pull_request_template.md (≤ 80-char bullets, ≤ 4 per section), assignee, and labels; plus the saved-copy check any skill runs before rewriting a PR description. Triggers when the user asks to "open a PR", "push it up as a PR", "create a pull request", "open a pull request", "update the PR description", or when a stacked branch's work is complete.
+description: Recipe for opening a GitHub pull request via `gh pr create` — title format derived from branch shape, a terse body from the repo's pull_request_template.md (≤ 80-char bullets, ≤ 4 per section), assignee, and labels; plus the saved-copy check any skill runs before rewriting a PR description. Triggers when the user asks to "open a PR", "push it up as a PR", "create a pull request", "open a pull request", or "update the PR description".
 ---
 
 # Open a PR

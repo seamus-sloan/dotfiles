@@ -24,11 +24,7 @@
   - A repo absent from that file has no GitHub prefix — use its Jira ticket, or the `u/sloan/<feature>` fallback.
   - A global `prepare-commit-msg` hook adds the `Refs: #123` trailer from the branch name, so don't add it yourself. `pre-commit` rejects a commit whose branch carries a *different* repo's prefix.
 - Use conventional commits in all repositories by prefixing commits with `feat`, `fix`, or `chore`
-- Break work into stacked branches when:
-  - Work exceeds 500 lines across multiple files
-  - Work has changed more than 20 files for various changes
-  - Work can be meaningfully broken down into smaller PRs for better reviewability
-- Suffix stacked branches so the head of the train is clear: `-1` is the base, then `-2`, `-3`. Push each one once it's code complete.
+- One PR per piece of work, however large. Never split work into stacked branches.
 - Open or edit any PR with the `open-pr` skill. It owns the title, the body limits, and the saved-copy check.
 - Replies to PR review comments are minimal: a fixed comment gets just the commit SHA, then the thread is resolved (see `resolve-pr-comments`).
 - **My coding standards live in `~/.claude/standards/`.** Before writing or changing any code or config, tests included, read `~/.claude/standards/CODING_STANDARDS.md` and the files it names for the task.

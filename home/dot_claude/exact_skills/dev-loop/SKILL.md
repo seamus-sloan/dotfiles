@@ -73,7 +73,6 @@ Dispatch a fresh `general-purpose` subagent on Opus: "Apply `~/.claude/skills/wr
 Then:
 
 - Read the plan once. Answer its open questions yourself from the issue, the repo, and the instruction files where you can; batch the remainder into **one** `AskUserQuestion`. Append the answers to the plan file.
-- If the file map exceeds the global stacking thresholds (over 500 lines or 20 files), stop and ask the user to split the spec. v1 does not auto-stack.
 
 ## 4. Implement
 
