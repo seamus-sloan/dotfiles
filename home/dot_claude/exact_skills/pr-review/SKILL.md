@@ -131,11 +131,12 @@ Spec: <source | none>   Depth: <d>   Panel: <k> finders[ + sweep], <v> verifiers
 | ID | Src | Kind | Severity | Location | Claim | Verdict | Evidence / reason |
 
 Confirmed: <n> (<c> critical / <j> major / <k> minor / <e> excess)   Plausible: <n>   Dismissed: <n>   Judgment: <n>   Deferred: <n>
+Lean: -<N> lines possible | none
 Judgment calls: <ID — decision — one-line why> | none
 Deferred to you: <ID — one line> | none
 ```
 
-Rows go CONFIRMED first, then PLAUSIBLE, each by severity; excess rows show `—` for severity. Then stop, since this skill never fixes. When `dev-loop` called it, the table goes back to `dev-loop`, which builds the fix brief.
+Rows go CONFIRMED first, then PLAUSIBLE, each by severity; excess rows show `—` for severity. `Lean` sums the net lines the CONFIRMED excess rows' fixes would remove. Then stop, since this skill never fixes. When `dev-loop` called it, the table goes back to `dev-loop`, which builds the fix brief.
 
 ## 10. Clean up
 
