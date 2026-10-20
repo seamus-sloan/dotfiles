@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Test-driven development discipline, on by default for every behaviour change. Iron Law - no production code without a failing test first. An agreed test list (seam, layer, test names) before the first test, outside-in from the boundary, Red-Green-Refactor with a mandatory verify-red step, one vertical slice at a time. Runs without being asked whenever implementation work starts on a new feature, bug fix, refactor, or behaviour change; also triggers when the user asks to "use TDD", "write the test first", "TDD this feature", "test-drive this", or mentions "red-green-refactor".
+description: Test-driven development discipline, on by default for every behaviour change. Iron Law - no production code without its test written first. A short agreed test list (seam, layer, test names) of only the tests worth keeping, outside-in from the boundary, one vertical slice at a time, and one test run when the feature is done instead of at every step. Runs without being asked whenever implementation work starts on a new feature, bug fix, refactor, or behaviour change; also triggers when the user asks to "use TDD", "write the test first", "TDD this feature", "test-drive this", or mentions "red-green-refactor".
 ---
 
 # tdd
@@ -13,11 +13,13 @@ Before the first test, read `~/.claude/standards/CODING_STANDARDS.md` and every 
 
 ## Iron Law
 
-**NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST.**
+**NO PRODUCTION CODE WITHOUT ITS TEST WRITTEN FIRST.**
 
-If you wrote production code first → delete it, write the test, watch it fail, then implement fresh from the test. "Keep the old code as reference" is the rationalization that breaks this.
+If you wrote production code first → delete it, write the test, then implement fresh from the test. "Keep the old code as reference" is the rationalization that breaks this.
 
 Violating the letter of this rule is violating the spirit.
+
+Writing first doesn't mean running at every step: tests run once, when the feature is done (see One run at the end). A bug fix adds one red run before the fix.
 
 ## When to apply
 
@@ -34,6 +36,17 @@ Violating the letter of this rule is violating the spirit.
 
 A **seam** is the public interface a test goes through: where you observe behaviour without reaching inside. Tests live at seams, never against internals. You can't test everything, so agreeing the seams up front is how testing effort lands on the critical paths and complex logic instead of every edge case.
 
+Only behaviour worth guarding goes on the list. A test earns its place when a caller relies on the behaviour and a plausible change would break it:
+
+| Keep a test for | Skip |
+|---|---|
+| a branch or decision, a parser, a business rule | message wording, log lines, formatting |
+| money, security, auth, data writes | framework glue, pass-through and delegation |
+| the boundaries a condition branches on | edge cases no branch in the code distinguishes |
+| every bug fix (its regression test) | a second test of a path another test already covers |
+
+Test each one at the cheapest layer that proves it: an error's variant in a unit test, never its text through a built binary.
+
 Before writing any test, write the **test list**: each seam, its layer from the standards' layer table with a one-line reason, and the behaviours to test there, already named in the language's convention.
 
 ```
@@ -49,81 +62,74 @@ parsePrice (unit: pure parsing, no I/O)
 - **Run directly** (`/tdd`, or TDD in the main session): when the list adds a new seam or a new test file, confirm it with the user before the first test, and write no test at an unconfirmed seam. Otherwise show the list and proceed.
 - **Run under a plan** (the `dev-loop` implementer, a `writing-plans` task): the seams and layers the plan lists count as agreed. Write the list from them. If the plan lists no seams for a behaviour task, return `NEEDS_CONTEXT` rather than picking your own; a task marked `Seams: none — <why>` needs no test.
 
-The list holds names, not tests. Tests are still written one at a time (see horizontal slicing, below), and the list grows as each cycle teaches you something.
+The list holds names, not tests. Tests are still written one at a time (see horizontal slicing, below), and the list grows as each slice teaches you something.
 
 ## Outside-in: start at the boundary
 
-When a slice crosses a boundary, run two loops:
+When a slice crosses a boundary, work in two loops:
 
-1. **Outer:** write the test at the outermost seam and watch it fail: end-to-end when the slice is a user journey the layer table sends there, integration otherwise. It stays red while you work.
-2. **Inner:** drive the logic behind it with unit tests, one Red → Green → Refactor cycle each.
-3. **Close:** the outer test goes green once the inner work is done. While it's still red, its failure names the next unit test to write.
+1. **Outer:** write the test at the outermost seam first: end-to-end when the slice is a user journey the layer table sends there, integration otherwise.
+2. **Inner:** drive the logic behind it with unit tests, one test → code → refactor slice each.
+3. **Close:** the outer test is the one the end run must turn green. If it fails there, its failure names the missing unit.
 
 A slice of pure logic runs only the inner loop.
 
-## Red → Green → Refactor
+## Test → code, one slice at a time
 
 ```
-RED  ──▶ verify-red ──▶ GREEN ──▶ verify-green ──▶ REFACTOR ──▶ next
-              │                          │              │
-        wrong failure?               not green?      stay green
-              ▼                          ▼              ▼
-              RED                       GREEN         REFACTOR
+TEST ──▶ CODE ──▶ REFACTOR ──▶ next slice ──▶ … ──▶ feature done ──▶ RUN ONCE
+                                                                       │
+                                                             red? fix, re-run what failed
 ```
 
-### 1. RED — write the test
+### 1. Write the test
 
 One behaviour from the test list, at its agreed seam and layer. Name, place, and shape it as the standards' examples do. Real code, not mocks: double only the boundaries (see Test doubles in `~/.claude/standards/testing.md`).
 
-### 2. Verify RED — watch it fail
+### 2. Write the code
 
-**Mandatory. Never skip.**
+Smallest change that makes that test pass. No extra branches, no error paths the test doesn't exercise.
 
-Run the test. Confirm it fails for the *right reason* (`function not defined`, `assertion: expected X, got Y` — not `compile error in unrelated file`).
+### 3. Refactor
 
-If it doesn't fail, the test is wrong. Fix the test, not the code.
+Clean up while the slice is fresh. If the test has to change for the refactor, it was tied to the implementation, not behaviour: fix the test first, separately.
 
-### 3. GREEN — minimal code to pass
+### 4. Next slice
 
-Smallest possible change that makes the failing test pass. No extra branches, no error paths the test doesn't exercise.
+Pick the next behaviour. Back to 1. Nothing runs between slices: a type-check that covers the test code (`cargo check --tests`, `tsc --noEmit`) is fine when it helps, a test run is not.
 
-Run the suite. Confirm exit code 0.
+Work in **vertical slices**: one test → one implementation → repeat. Each test is a **tracer bullet** aimed by what writing the last slice's code taught you, not by a test run. Never write all the tests first (see horizontal slicing, below).
 
-### 4. REFACTOR — clean up while green
+## One run at the end
 
-Now you can refactor with the safety net of a passing test. Re-run after each change to stay green.
+When the feature is done, or most of it, run the tests it added or touched, once: the affected package or crate, not the whole suite. Whoever called this skill (`dev-loop`, a PR) runs the full suite before it ships.
 
-If a refactor breaks the test, your refactor is wrong (or the test was tied to implementation, not behavior — fix the test first, separately).
+- **Every new test is named in the output:** one that's missing never ran (a filter typo, a missing `#[test]`, a file the runner skips). Use the runner's verbose flag when it hides names (`go test -v`, `vitest --reporter=verbose`).
+- **Red:** fix the code, or the test if the test was wrong, then re-run only what failed.
+- **Green on the first run:** that test was never seen failing, so read it once. It must assert a value the code computes, never a constant or a mock of the unit (Shape of a test in `~/.claude/standards/testing.md`).
 
-### 5. Next test
-
-Pick the next behavior. Back to RED.
-
-Work in **vertical slices**: one test → one implementation → repeat, each test a **tracer bullet** that responds to what the last cycle taught you. Never write all the tests first (see horizontal slicing, below).
-
-## Bug-fix variant — Red-Green for regression
+## Bug-fix variant — one red run
 
 For a bug:
 1. Write the regression test that reproduces the bug.
-2. Run it → must FAIL with the bug present.
+2. Run it → must FAIL with the bug present. This is the one red run the skill keeps: it proves the test catches the bug.
 3. Apply the fix.
-4. Run it → must PASS.
-5. **Revert the fix locally**, run again → test must FAIL again. This proves the test catches the bug.
-6. Re-apply the fix. Confirm pass.
+4. Run it → must PASS. This can be the end run.
 
-If step 5 doesn't fail, the test isn't really catching the bug. Tighten it.
+If step 2 passes, the test isn't catching the bug. Tighten it.
 
 ## Anti-patterns
 
-What makes a single test bad (coupled to the implementation, or tautological) lives under Shape of a test in `~/.claude/standards/testing.md`. The anti-pattern in the process itself:
+What makes a single test bad (coupled to the implementation, or tautological) lives under Shape of a test in `~/.claude/standards/testing.md`. The anti-patterns in the process itself:
 
 - **Horizontal slicing**: writing all the tests first, then all the implementation. Bulk tests verify _imagined_ behavior: they test the _shape_ of things rather than what callers see, go insensitive to real changes, and lock in test structure before you understand the implementation. One slice at a time instead.
+- **Running at every step**: a test run after each test, each change and each refactor. A compiled suite costs minutes per run, and the end run catches the same failures.
 
 ## Common rationalizations — reject these
 
 | "Reason" to skip | Reality |
 |---|---|
-| "It's a tiny change" | Tiny changes break things constantly. Test it. |
+| "It's a tiny change" | If it has behaviour worth guarding (see the test list), test it. |
 | "I'll add the test after" | You won't. And if you do, it'll be biased toward the code you wrote. |
 | "There's nothing to test" | Then there's nothing to write. If there's behavior, there's a test. |
 | "The framework guarantees this" | The framework guarantees its own behavior, not your usage. |
@@ -132,10 +138,11 @@ What makes a single test bad (coupled to the implementation, or tautological) li
 
 ## Hard rules
 
-- **Never** write production code before the failing test exists.
-- **Never** skip the verify-red step. The whole point is watching the test fail.
+- **Never** write production code before its test exists.
+- **Never** run tests between slices. Run once when the feature is done; a bug fix adds its one red run.
 - **Never** make a test pass by weakening the assertion. Tighten the code, not the test.
-- **Never** declare a bug fix complete without the revert-and-fail-again step (regression proof).
+- **Never** declare a bug fix complete without seeing its regression test fail before the fix.
+- **Never** test message wording, log lines or glue, or an error's text through a built binary.
 - **Never** combine multiple behaviors in one test. One test, one behavior.
 - **Never** mock what you're testing. Mock the boundary, not the unit.
 - **Never** write a test at a new seam nobody agreed on, or before its layer is decided.

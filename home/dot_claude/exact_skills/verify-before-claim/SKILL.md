@@ -41,9 +41,9 @@ Skip any step → that's lying, not verifying.
 | Tests pass | Test command output: 0 failures, exit 0 | Previous run, "should pass" |
 | Linter clean | Linter output: 0 errors, exit 0 | Partial run, file-level check |
 | Build succeeds | Build command: exit 0 | Linter passing (linter ≠ compiler) |
-| Type-check clean | `tsc --noEmit` / `cargo check` exit 0 | Linter pass |
-| Bug fixed | Regression test: revert fix → fails → re-apply → passes | Code changed, "assumed fixed" |
-| Regression test works | Red-green cycle verified (revert → fails) | Test passes once |
+| Type-check clean | `tsc --noEmit` / `cargo check --all-targets` exit 0 | Linter pass, plain `cargo check` (skips tests) |
+| Bug fixed | Regression test: fails without the fix → passes with it | Code changed, "assumed fixed" |
+| Regression test works | Seen failing without the fix, then passing | Test passes once |
 | Subagent done | VCS diff shows the changes | Agent reports "success" |
 | Requirements met | Line-by-line checklist against the spec | Tests passing |
 | Hook fires | Sentinel file exists / observable side effect | "I added it to settings.json" |
@@ -82,8 +82,8 @@ If you catch yourself doing any of these, run the gate before continuing:
 - ❌ "Should pass now" / "Looks correct."
 
 **Bug-fix regression test:**
-- ✅ Write test → run (passes) → revert fix → run (must FAIL) → restore → run (passes) → "Regression test verified."
-- ❌ "I've added a regression test." (without the revert-and-fail step)
+- ✅ Write test → run (must FAIL) → fix → run (passes) → "Regression test verified." If the fix went in first, revert it once to see the failure.
+- ❌ "I've added a regression test." (never seen failing without the fix)
 
 **Build:**
 - ✅ `cargo build` → exit 0 → "Build succeeds."

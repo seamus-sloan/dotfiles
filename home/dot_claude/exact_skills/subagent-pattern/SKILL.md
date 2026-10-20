@@ -101,8 +101,8 @@ Repo context:
 
 Constraints:
 - Test only at the task's listed seams — they count as agreed for tdd.
-- Apply tdd skill: red → verify red → green → verify green → commit. Never skip verify-red.
-- Run the task's Verify command before committing; meet every acceptance criterion.
+- Apply tdd skill: test → code → refactor → commit. Run no tests; a bug-fix task adds its one red run before the fix.
+- Meet every acceptance criterion. The Verify command runs once, after the last task.
 - Don't re-decide anything under Decisions.
 - If unsure about anything, return NEEDS_CONTEXT — don't guess.
 
@@ -135,7 +135,9 @@ Run [pr-review](../pr-review/SKILL.md) §3–§9 at `depth=quick` on the task's 
 
 ## After all tasks pass
 
-Run a **final reviewer subagent** across the *entire* implementation (not per-task). Catches integration issues that per-task reviews miss — broken cross-references, dead code introduced halfway through, inconsistent patterns.
+Run every task's Verify command once, in one go, and check its output names every test the tasks added. Red → dispatch an implementer with the failing output to fix it as a new commit, then re-run only what failed.
+
+Then run a **final reviewer subagent** across the *entire* implementation (not per-task). Catches integration issues that per-task reviews miss — broken cross-references, dead code introduced halfway through, inconsistent patterns.
 
 Then push with `git push` and hand off to [open-pr](../open-pr/SKILL.md) (PR).
 

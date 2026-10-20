@@ -14,7 +14,7 @@ Every angle except `sweep` opens with a **Prevent** line: the habit that keeps i
 
 ## line — line-by-line diff scan (defect)
 
-**Prevent:** test every boundary a condition branches on (empty, zero, exactly at the limit, one past it) and every variant of each enum or status the code handles.
+**Prevent:** test every boundary a condition branches on (empty, zero, exactly at the limit, one past it) and each enum or status variant the code handles differently.
 
 Read every hunk in the diff, line by line. Then read the enclosing function of each hunk: bugs in unchanged lines of a touched function are in scope, because the change re-exposes them or fails to fix them. For every line ask what input, state, timing or platform makes it wrong. Look for:
 
