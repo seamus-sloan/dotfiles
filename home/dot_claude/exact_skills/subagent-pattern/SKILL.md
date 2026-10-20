@@ -135,7 +135,7 @@ Run [pr-review](../pr-review/SKILL.md) §3–§9 at `depth=quick` on the task's 
 
 ## After all tasks pass
 
-Run every task's Verify command once, in one go. Red → dispatch an implementer with the failing output to fix it as a new commit, then re-run only what failed.
+Run every task's Verify command once, in one go, and check its output names every test the tasks added. Red → dispatch an implementer with the failing output to fix it as a new commit, then re-run only what failed.
 
 Then run a **final reviewer subagent** across the *entire* implementation (not per-task). Catches integration issues that per-task reviews miss — broken cross-references, dead code introduced halfway through, inconsistent patterns.
 

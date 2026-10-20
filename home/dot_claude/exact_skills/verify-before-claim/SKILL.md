@@ -41,7 +41,7 @@ Skip any step → that's lying, not verifying.
 | Tests pass | Test command output: 0 failures, exit 0 | Previous run, "should pass" |
 | Linter clean | Linter output: 0 errors, exit 0 | Partial run, file-level check |
 | Build succeeds | Build command: exit 0 | Linter passing (linter ≠ compiler) |
-| Type-check clean | `tsc --noEmit` / `cargo check` exit 0 | Linter pass |
+| Type-check clean | `tsc --noEmit` / `cargo check --all-targets` exit 0 | Linter pass, plain `cargo check` (skips tests) |
 | Bug fixed | Regression test: fails without the fix → passes with it | Code changed, "assumed fixed" |
 | Regression test works | Seen failing without the fix, then passing | Test passes once |
 | Subagent done | VCS diff shows the changes | Agent reports "success" |

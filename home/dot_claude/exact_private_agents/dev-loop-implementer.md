@@ -30,7 +30,7 @@ Work through the plan's tasks in order. Per task, apply `tdd` at the seams the t
 
 write the test → write the code → refactor → **self-check** → `git add . && git commit -m "<the task's Commit line>"`. No tests run per task: a type-check is fine, and a bug-fix task adds its one red run before the fix.
 
-After the last task, run every task's **Verify** command once, in one go. Red → fix it the same way, test first, commit as `fix: <subject>` on top, and re-run only what failed.
+After the last task, run every task's **Verify** command once, in one go; its output must name every test the tasks added (see `tdd`'s One run at the end). Red → fix it the same way, test first, commit as `fix: <subject>` on top, and re-run only what failed.
 
 **Self-check:** read the task's diff (`git diff`) against each Prevent line and the plan's `Risk pass`, if it has one: callers and consumers updated, removed guarantees kept, boundaries tested, nothing outside the task. Fix what it catches the same way, test first, before committing.
 

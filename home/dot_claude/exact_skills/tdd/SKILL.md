@@ -96,14 +96,15 @@ Clean up while the slice is fresh. If the test has to change for the refactor, i
 
 ### 4. Next slice
 
-Pick the next behaviour. Back to 1. Nothing runs between slices: a type-check (`cargo check`, `tsc --noEmit`) is fine when it helps, a test run is not.
+Pick the next behaviour. Back to 1. Nothing runs between slices: a type-check that covers the test code (`cargo check --tests`, `tsc --noEmit`) is fine when it helps, a test run is not.
 
-Work in **vertical slices**: one test → one implementation → repeat, each test a **tracer bullet** that responds to what the last slice taught you. Never write all the tests first (see horizontal slicing, below).
+Work in **vertical slices**: one test → one implementation → repeat. Each test is a **tracer bullet** aimed by what writing the last slice's code taught you, not by a test run. Never write all the tests first (see horizontal slicing, below).
 
 ## One run at the end
 
 When the feature is done, or most of it, run the tests it added or touched, once: the affected package or crate, not the whole suite. Whoever called this skill (`dev-loop`, a PR) runs the full suite before it ships.
 
+- **Every new test is named in the output:** one that's missing never ran (a filter typo, a missing `#[test]`, a file the runner skips). Use the runner's verbose flag when it hides names (`go test -v`, `vitest --reporter=verbose`).
 - **Red:** fix the code, or the test if the test was wrong, then re-run only what failed.
 - **Green on the first run:** that test was never seen failing, so read it once. It must assert a value the code computes, never a constant or a mock of the unit (Shape of a test in `~/.claude/standards/testing.md`).
 
