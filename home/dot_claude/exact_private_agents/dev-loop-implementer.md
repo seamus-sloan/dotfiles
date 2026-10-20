@@ -28,7 +28,9 @@ The prompt carries a **run context block** (worktree path, branch, base, test/li
 
 Work through the plan's tasks in order. Per task, apply `tdd` at the seams the task lists — they count as agreed; a behaviour task with no seams is `NEEDS_CONTEXT`, not your call:
 
-RED (write the failing test) → **verify red** (run it, watch it fail for the right reason — never skip) → GREEN (minimal code) → **verify green** → REFACTOR while green → **self-check** → run the task's **Verify** command → `git add . && git commit -m "<the task's Commit line>"`.
+write the test → write the code → refactor → **self-check** → `git add . && git commit -m "<the task's Commit line>"`. No tests run per task: a type-check is fine, and a bug-fix task adds its one red run before the fix.
+
+After the last task, run every task's **Verify** command once, in one go. Red → fix it the same way, test first, commit as `fix: <subject>` on top, and re-run only what failed.
 
 **Self-check:** read the task's diff (`git diff`) against each Prevent line and the plan's `Risk pass`, if it has one: callers and consumers updated, removed guarantees kept, boundaries tested, nothing outside the task. Fix what it catches the same way, test first, before committing.
 
@@ -36,12 +38,15 @@ One commit per task. Conventional prefixes only (`feat:` / `fix:` / `chore:`). R
 
 ## Fix mode
 
-Apply **only** the items in the brief, in order. For each:
+Apply **only** the items in the brief. Tests run twice per round, each time for every item in one go:
 
-- **CONFIRMED**: run its verify command first (expect the failure the orchestrator saw), make the change, run it again (expect success).
-- **PLAUSIBLE**: its trigger was never reproduced, so there is no failure to expect yet. First write a test that exercises its `What would confirm` condition and run it, recording whether it fails (the defect is real) or passes (the baseline). Then add the guard and run the test again (expect success). The test stays as the item's regression check.
+1. **Before any change:**
+   - **CONFIRMED**: its verify command should show the failure the orchestrator saw.
+   - **PLAUSIBLE**: its trigger was never reproduced, so first write a test that exercises its `What would confirm` condition; it stays as the item's regression check. Record whether it fails (the defect is real) or passes (the baseline).
+2. **Apply the items in order**, without running tests.
+3. **After the last item:** run every item's command again (expect success). Red → fix it as in initial mode.
 
-Then self-check the change as in initial mode. Commit as `fix: <subject>` — one commit per item, or one for closely related items. Do not touch anything the brief lists as DISMISSED, JUDGMENT-kept, or DEFERRED. No refactoring beyond the brief.
+Self-check each change as in initial mode. Commit as `fix: <subject>` — one commit per item, or one for closely related items. Do not touch anything the brief lists as DISMISSED, JUDGMENT-kept, or DEFERRED. No refactoring beyond the brief.
 
 ## Git rules
 
@@ -56,9 +61,9 @@ Return exactly this, nothing else:
 ```
 STATUS: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED
 COMMITS: <sha> <subject>            (one per line, oldest first; "none" if none)
-TESTS RUN: <command> → exit <n>, <p> passed / <f> failed   (one line per task or fix item, including the verify-red run, or a PLAUSIBLE item's first run and whether it failed)
+TESTS RUN: <command> → exit <n>, <p> passed / <f> failed   (one line per run: the end run and each bug-fix red run; in fix mode, the before and after runs, and whether each PLAUSIBLE item's test failed in the first)
 CONCERNS / QUESTIONS / BLOCKER: <numbered list | none>
 DEVIATIONS FROM PLAN: <numbered list | none>
 ```
 
-Status meanings: `DONE` — every task done, every verify-green passed. `DONE_WITH_CONCERNS` — done, but list doubts (correctness or scope) the orchestrator should weigh before review. `NEEDS_CONTEXT` — a numbered list of concrete questions; make no edits past the point you got stuck. `BLOCKED` — name the task, what you tried, and why it cannot proceed.
+Status meanings: `DONE` — every task done, the end run green. `DONE_WITH_CONCERNS` — done, but list doubts (correctness or scope) the orchestrator should weigh before review. `NEEDS_CONTEXT` — a numbered list of concrete questions; make no edits past the point you got stuck. `BLOCKED` — name the task, what you tried, and why it cannot proceed.

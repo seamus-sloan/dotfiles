@@ -85,7 +85,7 @@ Dispatch `dev-loop-implementer` (`model: sonnet`) with the run context block, `M
 | `NEEDS_CONTEXT` | answer from the issue / plan / repo; batch what you cannot into one `AskUserQuestion`; re-dispatch with the answers appended. Two round-trips per phase, then treat as `BLOCKED` |
 | `BLOCKED` | context problem → re-dispatch with more; reasoning problem → re-dispatch on Opus; plan wrong → back to §3 once; otherwise hand back to the user |
 
-Never trust the self-report. On `DONE`: `git -C <WORKTREE> status --porcelain` must be empty, `git log origin/main..HEAD --oneline` must show the commits, and you run the plan's per-task test targets yourself (not the full suite yet). Red here means the report was wrong: re-dispatch in `Mode: fix` with the failing output as the brief. That re-dispatch does not count as a review round.
+Never trust the self-report. On `DONE`: `git -C <WORKTREE> status --porcelain` must be empty, `git log origin/main..HEAD --oneline` must show the commits, and you run every task's Verify command yourself, once, in one go (not the full suite yet). Red here means the report was wrong: re-dispatch in `Mode: fix` with the failing output as the brief. That re-dispatch does not count as a review round.
 
 ## 5. Review loop
 

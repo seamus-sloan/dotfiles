@@ -61,7 +61,7 @@ Every in-branch fix lands with a test that:
 - Passes with the fix.
 - Lives in the same crate/package/spec dir as the code it covers.
 
-Verify both halves: revert the fix locally, re-run the test, confirm it fails. Then re-apply.
+Verify both halves: see the test fail without the fix (a run before the fix counts; if the fix is already in, revert it locally once), then pass with it.
 
 No regression test → not done.
 

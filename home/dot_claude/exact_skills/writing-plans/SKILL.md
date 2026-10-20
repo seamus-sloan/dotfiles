@@ -52,7 +52,9 @@ Every task uses this shape:
 **Commit:** `<feat|fix|chore>: <subject>`
 ````
 
-**Seams** count as agreed for `tdd`: the implementer tests there and nowhere else, and stops with `NEEDS_CONTEXT` when a task has none. Pick each seam's layer from the layer table in `~/.claude/standards/testing.md`. A task with no behaviour (config, a rename) says `Seams: none — <why>`.
+**Seams** count as agreed for `tdd`: the implementer tests there and nowhere else, and stops with `NEEDS_CONTEXT` when a task has none. Pick each seam's layer from the layer table in `~/.claude/standards/testing.md`. A task with no behaviour (config, a rename) says `Seams: none — <why>`. List only behaviour that passes `tdd`'s keep/skip table.
+
+**Verify** runs once, after the last task, alongside every other task's, so each command must still pass once later tasks land.
 
 ## 4. Risk pass
 
