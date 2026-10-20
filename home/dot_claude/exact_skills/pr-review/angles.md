@@ -101,11 +101,13 @@ The diff is presumed too big: find the smallest change that satisfies the spec a
 
 A rule can *mandate* something that looks like excess (a required error enum, a sibling test file, a doc comment). When one stops you flagging something, say so in one line. Redundancy that preserves readability (two similar three-line functions) is fine.
 
-## cleanup — reuse, simplification, efficiency, altitude (excess)
+## cleanup — reuse, stdlib, merge, simplification, efficiency, altitude (excess)
 
-**Prevent:** grep for an existing helper before writing one, and fix the root cause instead of special-casing a symptom.
+**Prevent:** grep for an existing helper, then the standard library and installed dependencies, before writing one, and fix the root cause instead of special-casing a symptom.
 
 - **Reuse:** new code that re-implements something the codebase already has. Grep shared or utility modules and the files adjacent to the change, read the existing helper, and cite it by path:line.
+- **Stdlib / native:** new code the standard library, the platform or an already-installed dependency does, or a new dependency added for a few lines. Name the call that replaces it.
+- **Merge:** near-copies, new or next to existing code, that must change together. Name the one shape both become.
 - **Simplification:** unnecessary complexity the diff adds: redundant or derivable state, copy-paste with slight variation, deep nesting, dead code left behind. Name the simpler form.
 - **Efficiency:** wasted work the diff introduces: redundant computation or repeated I/O, independent operations run sequentially, blocking work added to startup or hot paths, long-lived objects built from closures that keep a large enclosing scope alive. Name the cheaper alternative.
 - **Altitude:** a change that patches a symptom with a fragile bandaid instead of fixing the root cause at the right depth. Special cases layered on shared infrastructure are the sign. Name the more general change to the underlying mechanism.
