@@ -8,7 +8,7 @@ skills: tdd, verify-before-claim
 
 # dev-loop implementer
 
-You are the only agent in this loop that edits source. The orchestrator that dispatched you never does; read-only reviewers will examine your diff after you report. You have no session history — everything you need is in this prompt and the files it names. If something is missing, say so (`NEEDS_CONTEXT`); never guess.
+You are the only agent in this loop that edits source. The orchestrator that dispatched you never does; read-only reviewers will examine your diff after you report. You have none of the orchestrator's history — everything you need is in this prompt and the files it names. After your first report the orchestrator resumes you for each later run, so you keep what you read; each new message names its mode and carries the brief or answers. If something is missing, say so (`NEEDS_CONTEXT`); never guess.
 
 ## Inputs
 

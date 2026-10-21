@@ -11,7 +11,7 @@ The session running this skill is the **orchestrator**. It plans, dispatches, ju
 | Step | Owner |
 |---|---|
 | Plan | [`writing-plans`](../writing-plans/SKILL.md) via a fresh subagent |
-| Implement, fix | `dev-loop-implementer` agent (runs [`tdd`](../tdd/SKILL.md)) |
+| Implement, fix | `dev-loop-implementer` agent (runs [`tdd`](../tdd/SKILL.md)), resumed for every fix |
 | Review | [`pr-review`](../pr-review/SKILL.md) at `depth` (default `standard`) on round 1, then at `quick` on each round's fix commits |
 | Judge findings | **the orchestrator itself**, by `pr-review`'s verify-and-rule steps — there is no referee |
 | Verify | [`verify-before-claim`](../verify-before-claim/SKILL.md), [`test-failure-triage`](../test-failure-triage/SKILL.md) |
@@ -76,16 +76,20 @@ Then:
 
 ## 4. Implement
 
-Dispatch `dev-loop-implementer` (`model: sonnet`) with the run context block, `Mode: initial`, and the plan path. Handle its status:
+Dispatch `dev-loop-implementer` (`model: sonnet`) with the run context block, `Mode: initial`, and the plan path.
+
+Keep the agent ID the dispatch returns. Every later implementer run (the re-runs below, each fix round in §5, §6's fixes) **resumes** that agent with `SendMessage` (`to: <agent ID>`) instead of dispatching a fresh one, so it keeps the plan and code it already read. The message carries the mode and the brief or answers; wait for its report before going on. Dispatch fresh, with the run context block and `git log origin/main..HEAD --oneline`, only when the model must change (`BLOCKED` on reasoning, §5's convergence guard) or the resume fails; from then on, resume the new agent.
+
+Handle its status:
 
 | Status | Action |
 |---|---|
 | `DONE` | verify independently (below) |
 | `DONE_WITH_CONCERNS` | read them; correctness or scope concerns become the first rows of the round-1 verdict table; observations are noted |
-| `NEEDS_CONTEXT` | answer from the issue / plan / repo; batch what you cannot into one `AskUserQuestion`; re-dispatch with the answers appended. Two round-trips per phase, then treat as `BLOCKED` |
-| `BLOCKED` | context problem → re-dispatch with more; reasoning problem → re-dispatch on Opus; plan wrong → back to §3 once; otherwise hand back to the user |
+| `NEEDS_CONTEXT` | answer from the issue / plan / repo; batch what you cannot into one `AskUserQuestion`; resume it with the answers. Two round-trips per phase, then treat as `BLOCKED` |
+| `BLOCKED` | context problem → resume it with more; reasoning problem → a fresh dispatch on Opus; plan wrong → back to §3 once; otherwise hand back to the user |
 
-Never trust the self-report. On `DONE`: `git -C <WORKTREE> status --porcelain` must be empty, `git log origin/main..HEAD --oneline` must show the commits, and you run every task's Verify command yourself, once, in one go (not the full suite yet), and check its output names every test the commits added. Red here means the report was wrong: re-dispatch in `Mode: fix` with the failing output as the brief. That re-dispatch does not count as a review round.
+Never trust the self-report. On `DONE`: `git -C <WORKTREE> status --porcelain` must be empty, `git log origin/main..HEAD --oneline` must show the commits, and you run every task's Verify command yourself, once, in one go (not the full suite yet), and check its output names every test the commits added. Red here means the report was wrong: resume it in `Mode: fix` with the failing output as the brief. That run does not count as a review round.
 
 ## 5. Review loop
 
@@ -98,9 +102,9 @@ Let `r = 1`, `cap` from §0 (default 2). Each round:
 
    It dispatches the finders, verifies their candidates, rules on each row, and returns the verdict table. Its rulings go to the user in the final report (§8), never into the PR: judgment calls with their rationale, so the user can overrule them; DEFERRED_TO_USER items, which never block the loop but block a `merge` run exactly like a `ship-pr` deferral.
 3. **Severity gate.** CRITICAL and MAJOR items, CONFIRMED or PLAUSIBLE, always enter the brief. MINOR and excess (`Kind: excess`) items enter only if the fix is under ~5 lines; otherwise they are reported, not fixed.
-4. **Exit check.** Empty brief → loop done, go to §6. `r == cap` with a non-empty brief → do not fix; go to §6 with the brief listed as unresolved, and open no PR unless the user overrode (`ready` / `merge` still stop here and hand back). Convergence guard: a row CONFIRMED or PLAUSIBLE in two consecutive rounds after a fix attempt → the next implementer dispatch runs on Opus (`model: "opus"`); still unresolved at the cap → `BLOCKED`, hand back.
+4. **Exit check.** Empty brief → loop done, go to §6. `r == cap` with a non-empty brief → do not fix; go to §6 with the brief listed as unresolved, and open no PR unless the user overrode (`ready` / `merge` still stop here and hand back). Convergence guard: a row CONFIRMED or PLAUSIBLE in two consecutive rounds after a fix attempt → the next implementer run is a fresh dispatch on Opus (`model: "opus"`); still unresolved at the cap → `BLOCKED`, hand back.
 5. **Fix brief.** One block per CONFIRMED or PLAUSIBLE item that passed the gate (a PLAUSIBLE item carries its "what would confirm" line, and its fix is a guard against that trigger): ID, verdict, location, what to change (the finding's suggested fix or simpler alternative), and the verify command that must pass afterwards. A PLAUSIBLE item's verify command is the test the implementer writes for its "what would confirm" condition. Append: "Do not touch DISMISSED, JUDGMENT-kept, or DEFERRED items: <ids>. Commit as `fix:` on top. Never amend."
-6. **Dispatch** `dev-loop-implementer` with the run context block, `Mode: fix`, and the brief. Handle status as in §4. On `DONE`, run each CONFIRMED item's verify command yourself; anything still failing keeps its verdict into the next round. A PLAUSIBLE item's command may have passed before the fix too, so it clears only when the fix commits add a test for its "what would confirm" condition and that test passes when you run it; otherwise it stays PLAUSIBLE into the next round. If the implementer's first run of that test failed, report the item as CONFIRMED.
+6. **Resume** the implementer with `Mode: fix` and the brief. Handle status as in §4. On `DONE`, run each CONFIRMED item's verify command yourself; anything still failing keeps its verdict into the next round. A PLAUSIBLE item's command may have passed before the fix too, so it clears only when the fix commits add a test for its "what would confirm" condition and that test passes when you run it; otherwise it stays PLAUSIBLE into the next round. If the implementer's first run of that test failed, report the item as CONFIRMED.
 7. `r += 1`; back to step 1.
 
 Print `pr-review`'s verdict table after each round.
@@ -110,7 +114,7 @@ Print `pr-review`'s verdict table after each round.
 Run `TEST_CMD` and `LINT_CMD` in full, fresh, in this message. Red → `test-failure-triage`:
 
 - pre-existing (also fails on `origin/main`) → note for the final report;
-- in-branch → one more implementer dispatch in `Mode: fix` with the failing output (separate cap of 2, not a review round), then re-run both commands.
+- in-branch → resume the implementer once more in `Mode: fix` with the failing output (separate cap of 2, not a review round), then re-run both commands.
 
 Mechanical lint fixes (`cargo fmt`, `biome format`) also go through the implementer. The orchestrator never edits the worktree, even for that.
 
@@ -143,8 +147,8 @@ Blocking: <what stopped the loop | nothing>
 - **Never** CONFIRM a finding without evidence the orchestrator produced in the same message. A reviewer's confidence is not evidence.
 - **Never** amend, rebase, or force-push. Every fix round is new commits.
 - **Never** start a review round on a dirty tree, and never claim green without a fresh full `TEST_CMD` + `LINT_CMD` run in the same message.
-- **Never** exceed the round cap, and never re-dispatch identical inputs to the same model after `BLOCKED` — something must change.
-- **Never** let a subagent inherit session history. Every dispatch carries the full run context block.
+- **Never** exceed the round cap, and never send identical inputs to the same model after `BLOCKED` — something must change.
+- **Never** let a subagent inherit this session's history. Every fresh dispatch carries the full run context block; a resumed implementer already has it.
 - **Never** merge with a DEFERRED_TO_USER item outstanding.
 - **Never** investigate-then-edit on `main`. §2 precedes every implementer dispatch.
 - **Never** let anything pushed — branch, commits, PR text — reference Claude.
