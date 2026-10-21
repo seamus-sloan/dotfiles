@@ -13,7 +13,6 @@ Every depth covers every angle in [angles.md](angles.md). Depth sets how many fi
 | | `quick` | `standard` (default) | `deep` |
 |---|---|---|---|
 | Find (§4) | 3 `review-finder`s, angles grouped | 5 `review-finder`s, angles paired | 10 `review-finder`s, one angle each |
-| Thermo (§4) | no | both thermo subagents | both thermo subagents |
 | Verify (§6) | the judge, row by row | one `review-verifier` per finder, for all its rows | one `review-verifier` per row |
 | Sweep (§7) | no | no | yes |
 | Agent effort | `high` | `high` | `max` |
@@ -85,8 +84,6 @@ Round: <r>
 
 Dispatch one `review-finder` for each finder in the depth's row of the finder table in [angles.md](angles.md), all in one message and in the foreground (`run_in_background: false`), since the next step needs every result. Each gets the context block, its angles' names and full sections pasted from `angles.md`, and, from round 2, the prior verdict table. At `deep`, dispatch with `effort: max`; the agents default to `high`.
 
-At `standard` and `deep`, dispatch `thermo-nuclear-review-subagent` and `thermo-nuclear-code-quality-review-subagent` in the same message and the same way. Each gets the context block, whose `Diff file` and `Worktree` stand in for the `### Git / diff output` and `### Changed file contents` sections they expect, and is told to report every finding as a candidate block from `~/.claude/agents/review-finder.md` § Output, under the angle `thermo` or `quality`. From then on each counts as a finder, so §5 merges its rows and §6 verifies them. `quick` skips both.
-
 ## 5. Merge and dedupe
 
 Put every candidate, including `Also noticed` blocks, in one table, with IDs keeping their angle prefix (`line-2`, `callers-1`) and the finder that reported each.
@@ -129,7 +126,7 @@ One verdict per row, with a one-line reason:
 
 ```
 pr-review: <branch | PR #n — title> vs <BASE> — <n> files, <m> lines   Round: <r>
-Spec: <source | none>   Depth: <d>   Panel: <k> finders[ + thermo][ + sweep], <v> verifiers   Candidates: <raw> → <after dedupe>
+Spec: <source | none>   Depth: <d>   Panel: <k> finders[ + sweep], <v> verifiers   Candidates: <raw> → <after dedupe>
 
 | ID | Src | Kind | Severity | Location | Claim | Verdict | Evidence / reason |
 
