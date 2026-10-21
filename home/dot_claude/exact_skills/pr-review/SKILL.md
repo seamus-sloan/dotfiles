@@ -8,7 +8,7 @@ argument-hint: "[<PR # | PR URL | branch>] [depth=quick|standard|deep]"
 
 The session running this skill is the **judge**. Finders report candidates, verifiers test them, and the judge rules on every row from their evidence. Nothing here edits code or posts anywhere: the output is a verdict table. Fixing belongs to whoever called this; in `dev-loop` that's the implementer agent.
 
-Every depth covers every angle in [angles.md](angles.md). Depth sets how many finders split the angles, who verifies, and how hard each agent thinks:
+Every depth covers every angle in [angles.md](angles.md), `ui` only when the diff touches UI files. Depth sets how many finders split the angles, who verifies, and how hard each agent thinks:
 
 | | `quick` | `standard` (default) | `deep` |
 |---|---|---|---|
@@ -82,7 +82,7 @@ Round: <r>
 
 ## 4. Find
 
-Dispatch one `review-finder` for each finder in the depth's row of the finder table in [angles.md](angles.md), all in one message and in the foreground (`run_in_background: false`), since the next step needs every result. Each gets the context block, its angles' names and full sections pasted from `angles.md`, and, from round 2, the prior verdict table. At `deep`, dispatch with `effort: max`; the agents default to `high`.
+Dispatch one `review-finder` for each finder in the depth's row of the finder table in [angles.md](angles.md), plus one for `ui` when the diff touches UI files, all in one message and in the foreground (`run_in_background: false`), since the next step needs every result. Each gets the context block, its angles' names and full sections pasted from `angles.md`, and, from round 2, the prior verdict table. At `deep`, dispatch with `effort: max`; the agents default to `high`.
 
 ## 5. Merge and dedupe
 

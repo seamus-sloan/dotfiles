@@ -1,6 +1,6 @@
 ---
 name: review-finder
-description: Finder for pr-review (and dev-loop's review rounds) — hunts the review angles named in the dispatch (one at deep depth, a group of two to four otherwise) across a diff and reports every candidate with a nameable failure scenario; a verifier rules on each. Read-only. Dispatched only by the pr-review skill.
+description: Finder for pr-review (and dev-loop's review rounds) — hunts the review angles named in the dispatch (one at deep depth or for `ui`, a group of two to four otherwise) across a diff and reports every candidate with a nameable failure scenario; a verifier rules on each. Read-only. Dispatched only by the pr-review skill.
 model: opus
 effort: high
 tools: Read, Grep, Glob

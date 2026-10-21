@@ -8,6 +8,8 @@ pr-review §4 dispatches the finders in its depth's row below, all in parallel, 
 | `standard` | `line` `pitfalls` · `removed` `callers` · `state` `safety` · `tests-spec` `conventions` · `excess` `cleanup` |
 | `deep` | each angle alone, then `sweep` |
 
+When the diff touches UI files, `ui` joins every depth as one more finder of its own; otherwise it doesn't run.
+
 Defect angles report `Kind: defect`; `excess` and `cleanup` report `Kind: excess`.
 
 Every angle except `sweep` opens with a **Prevent** line: the habit that keeps its defects out of a diff in the first place. [writing-plans](../writing-plans/SKILL.md) applies them in its risk pass, `dev-loop-implementer` checks each task against them before committing, and finders hunt for the places a diff broke them.
@@ -117,6 +119,17 @@ A rule can *mandate* something that looks like excess (a required error enum, a 
 - **Altitude:** a change that patches a symptom with a fragile bandaid instead of fixing the root cause at the right depth. Special cases layered on shared infrastructure, or ad-hoc conditionals bolted onto unrelated flows, are the sign. Name the more general change to the underlying mechanism.
 
 In `Failure scenario`, state the concrete cost: what is duplicated, wasted, or harder to maintain.
+
+## ui — interface guidelines (defect, UI diffs only)
+
+**Prevent:** give every control a label and a keyboard path, keep focus visible, honour reduced motion, and take colours and spacing from the design tokens.
+
+UI files are `.tsx`, `.jsx`, `.vue`, `.svelte`, `.astro`, `.html`, `.css` and `.scss`, plus any component or style file in a frontend package. Check every changed UI line against two rule sets, reading each in full:
+
+- `~/.claude/skills/web-design-guidelines/command.md`: every rule under **Rules**.
+- impeccable's `audit.md`, the newest match for `~/.claude/plugins/cache/impeccable/*/*/skills/impeccable/reference/audit.md` (skip it if there's none): the **Check for** lists in its Diagnostic Scan. Skip its scores and anything that needs its detector, a browser or a screenshot.
+
+Quote the rule each candidate breaks. A contrast or layout claim the code alone can't settle goes to the verifier as `How to verify`.
 
 ## sweep — gaps (§7, `deep` only)
 
