@@ -64,12 +64,14 @@ Concurrency:
 
 ## safety — data safety, trust boundaries, operations (defect)
 
-**Prevent:** never interpolate input into SQL, shell or HTML, and validate untrusted input (user, network, LLM) before it is stored, rendered, fetched or run.
+**Prevent:** never interpolate input into SQL, shell or HTML, validate untrusted input (user, network, LLM) before it is stored, rendered, fetched or run, keep gated features behind their gate, and leave how developers build and run the code alone unless the spec changes it.
 
 - **Data safety:** SQL built by interpolation (even of numeric values); a TOCTOU check-then-write that should be one atomic `UPDATE … WHERE old = ?`; model validations bypassed by direct writes; ORM column names that don't exist in the schema (they silently return nothing).
 - **Trust boundaries:** user, LLM or network input that is written, rendered, fetched or executed without validation: shell interpolation, `eval`, unsafe HTML rendering (`dangerouslySetInnerHTML`, `v-html`, `html_safe`), LLM-generated URLs fetched without an allowlist, LLM output persisted without a format or shape check or stored where it becomes a later prompt.
+- **Feature gates:** a feature meant to stay behind a flag or an internal-only check that the diff makes reachable without it: a new entry point, route, export or default that skips the gate. Not when the spec removes the gate on purpose.
 - **Performance on hot paths:** N+1 queries, O(n·m) lookups inside loops or views.
 - **CI and release:** tool versions that don't match the project, wrong artifact paths, secrets not read from the secret store, inconsistent version-tag formats, publish steps that fail on re-run.
+- **Devex:** a change to how developers build or run the code: renamed or newly required environment variables, secrets read from a new place, remapped ports, a new script that must run first. A new alternative way to run things, or a dependency the package manager installs, doesn't count.
 - **LLM prompts:** 0-indexed lists (models answer 1-indexed), tools the prompt mentions that aren't wired up, limits stated in two places that can drift.
 
 ## tests-spec — tests and the spec (defect)
@@ -101,16 +103,18 @@ The diff is presumed too big: find the smallest change that satisfies the spec a
 
 A rule can *mandate* something that looks like excess (a required error enum, a sibling test file, a doc comment). When one stops you flagging something, say so in one line. Redundancy that preserves readability (two similar three-line functions) is fine.
 
-## cleanup — reuse, stdlib, merge, simplification, efficiency, altitude (excess)
+## cleanup — reuse, stdlib, merge, simplification, structure, types, efficiency, altitude (excess)
 
-**Prevent:** grep for an existing helper, then the standard library and installed dependencies, before writing one, and fix the root cause instead of special-casing a symptom.
+**Prevent:** grep for an existing helper, then the standard library and installed dependencies, before writing one, and fix the root cause, in the layer that owns it, instead of special-casing a symptom.
 
 - **Reuse:** new code that re-implements something the codebase already has. Grep shared or utility modules and the files adjacent to the change, read the existing helper, and cite it by path:line.
 - **Stdlib / native:** new code the standard library, the platform or an already-installed dependency does, or a new dependency added for a few lines. Name the call that replaces it.
 - **Merge:** near-copies, new or next to existing code, that must change together. Name the one shape both become.
 - **Simplification:** unnecessary complexity the diff adds: redundant or derivable state, copy-paste with slight variation, deep nesting, dead code left behind. Name the simpler form.
+- **Structure:** a reframing that deletes whole branches, modes or layers rather than tidying them; a file the diff pushes past 1,000 lines; logic in the wrong layer, or feature logic leaking into shared code. Name the restructure, the split or the right home.
+- **Types:** casts, `any` / `unknown`, or optional fields and parameters that paper over an invariant a clearer type would state. Name the type.
 - **Efficiency:** wasted work the diff introduces: redundant computation or repeated I/O, independent operations run sequentially, blocking work added to startup or hot paths, long-lived objects built from closures that keep a large enclosing scope alive. Name the cheaper alternative.
-- **Altitude:** a change that patches a symptom with a fragile bandaid instead of fixing the root cause at the right depth. Special cases layered on shared infrastructure are the sign. Name the more general change to the underlying mechanism.
+- **Altitude:** a change that patches a symptom with a fragile bandaid instead of fixing the root cause at the right depth. Special cases layered on shared infrastructure, or ad-hoc conditionals bolted onto unrelated flows, are the sign. Name the more general change to the underlying mechanism.
 
 In `Failure scenario`, state the concrete cost: what is duplicated, wasted, or harder to maintain.
 
