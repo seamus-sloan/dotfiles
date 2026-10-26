@@ -1,7 +1,7 @@
 ---
 name: dev-loop
 description: Agentic development loop — branch → plan → implement → panel review via pr-review (finders covering every review angle, verifiers, the orchestrator rules on each; later rounds review only the fixes) → fix → test → draft PR. Triggers when the user says "/dev-loop <issue # or spec>", "dev-loop this", "run the dev loop on #123", "take this issue end to end".
-argument-hint: "<issue # | issue URL | spec file | spec text> [ready] [merge] [no-pr] [rounds=N] [depth=quick|standard|deep] [branch=<name>] [plan=<path>]"
+argument-hint: "<issue # | issue URL | spec file | spec text> [ready] [merge] [no-pr] [rounds=N] [depth=quick|standard|deep] [branch=<name>] [base=<branch>] [plan=<path>]"
 ---
 
 # dev-loop (branch → plan → implement → panel review → fix → test → PR)
@@ -19,7 +19,7 @@ The session running this skill is the **orchestrator**. It plans, dispatches, ju
 
 Two invariants hold for the whole run:
 
-1. **The orchestrator never edits the worktree.** Every source change comes from the implementer. The orchestrator writes only to its scratchpad.
+1. **The orchestrator never edits the worktree.** Every source change comes from the implementer. The orchestrator writes only to its scratchpad. This holds after the run too: a follow-up fix to a loop's PR (a bug the user finds later) goes through the implementer plus a `quick` `pr-review` round.
 2. **The orchestrator is the only judge.** Finders and verifiers report; nothing is acted on until the orchestrator has ruled on it, re-checking every CRITICAL or MAJOR defect itself.
 
 Read `ship-pr` and `verify-before-claim` before running so their hard rules carry through.
@@ -37,6 +37,7 @@ Parse `$ARGUMENTS`. The first token that is an integer, `#n`, or an issue URL na
 | `rounds=N` | review-round cap (default **2**, hard max 5) |
 | `depth=<d>` | round-1 review depth: `quick`, `standard` (default) or `deep` (see `pr-review`); later rounds always run `quick` on the fix commits |
 | `branch=<name>` | the branch and worktree already exist; skip §2's create |
+| `base=<branch>` | branch from and target `<branch>` (a feature branch, or the slice below in a stack) instead of `main`: `<BASE>` below becomes `origin/<branch>` everywhere, including `--base` at §7 |
 | `plan=<path>` | the plan is already written; skip §3 |
 
 Natural-language forms are accepted ("and merge", "but don't open a PR", "not a draft", "three rounds", "deep review") and normalised to the tokens above. A run must never depend on an undocumented phrase — if the user asks for something not in this table, ask once, then proceed.
@@ -47,18 +48,20 @@ For an issue: `gh issue view <n> --json title,body,labels,comments`. For a spec 
 
 Look at the code first. If no change is actually required (already fixed, not reproducible, a docs-only misunderstanding), say so and **stop here** — no branch is created.
 
+**UX changes need signed-off comps first.** If the work changes what a user sees (layout, a new screen, moved controls) and the issue has no Figma comp the user has signed off, build the comps in Figma (on the surface's existing page; never an HTML artifact), link them in the issue description, and **stop** until the user signs off. Product and layout questions go to the user with the comps rather than being settled from the spec.
+
 ## 2. Branch and worktree
 
 1. Branch name: read `~/.config/git/issue-prefixes`. Issue work in a listed repo → `<PREFIX>-<n>/<slug>`. Otherwise ask for a ticket with one `AskUserQuestion`; if there is none, `u/sloan/<slug>`.
-2. `git fetch origin && wt switch -c <branch> -b origin/main`. Capture `WORKTREE=$(git rev-parse --show-toplevel)` and confirm `git branch --show-current`.
+2. `git fetch origin && wt switch -c <branch> -b <BASE>` (`<BASE>` is `origin/main` unless `base=` set it). `wt switch` changes directory only in its own subprocess, so read `WORKTREE` from `wt list` (a `/` in the branch name becomes `-` in the directory), then confirm `git -C <WORKTREE> branch --show-current`.
 3. Read the repo's instruction files in this order, whichever exist at the worktree root: `CLAUDE.md`, `AGENTS.md`, `RULES.md`, then every `*.md` under `.claude/rules/`. Extract `TEST_CMD` and `LINT_CMD` (omnibus: `just test`, `just lint`). If neither file names them, ask once.
 4. Build the **run context block**. Every dispatch below receives it verbatim — subagents inherit nothing from this session:
 
 ```
 Worktree (absolute): <WORKTREE>
-Branch: <branch>     Base: origin/main
+Branch: <branch>     Base: <BASE>
 Test: <TEST_CMD>     Lint: <LINT_CMD>
-Diff command: git -C <WORKTREE> diff origin/main...HEAD
+Diff command: git -C <WORKTREE> diff <BASE>...HEAD
 Plan: <PLAN_PATH>
 Instruction files: <the ones found, in read order>
 Issue/spec: <#n title | first line of the spec>
@@ -78,7 +81,9 @@ Then:
 
 Dispatch `dev-loop-implementer` (`model: sonnet`) with the run context block, `Mode: initial`, and the plan path.
 
-Keep the agent ID the dispatch returns. Every later implementer run (the re-runs below, each fix round in §5, §6's fixes) **resumes** that agent with `SendMessage` (`to: <agent ID>`) instead of dispatching a fresh one, so it keeps the plan and code it already read. The message carries the mode and the brief or answers; wait for its report before going on. Dispatch fresh, with the run context block and `git log origin/main..HEAD --oneline`, only when the model must change (`BLOCKED` on reasoning, §5's convergence guard) or the resume fails; from then on, resume the new agent.
+Keep the agent ID the dispatch returns. Every later implementer run (the re-runs below, each fix round in §5, §6's fixes) **resumes** that agent with `SendMessage` (`to: <agent ID>`) instead of dispatching a fresh one, so it keeps the plan and code it already read. The message carries the mode and the brief or answers; wait for its report before going on. Dispatch fresh, with the run context block and `git log <BASE>..HEAD --oneline`, only when the model must change (`BLOCKED` on reasoning, §5's convergence guard) or the resume fails; from then on, resume the new agent.
+
+For a run expected to pass an hour, schedule a liveness watchdog at this first dispatch (T3 `schedule_task`, about every 30 minutes, when available): it checks every background agent and worktree for a dead or stalled run. A host restart kills background agents with no completion notice, so on any resume, check each one's worktree state and resume it with `SendMessage` and a state summary. Delete the watchdog at §8.
 
 Handle its status:
 
@@ -89,13 +94,13 @@ Handle its status:
 | `NEEDS_CONTEXT` | answer from the issue / plan / repo; batch what you cannot into one `AskUserQuestion`; resume it with the answers. Two round-trips per phase, then treat as `BLOCKED` |
 | `BLOCKED` | context problem → resume it with more; reasoning problem → a fresh dispatch on Opus; plan wrong → back to §3 once; otherwise hand back to the user |
 
-Never trust the self-report. On `DONE`: `git -C <WORKTREE> status --porcelain` must be empty, `git log origin/main..HEAD --oneline` must show the commits, and you run every task's Verify command yourself, once, in one go (not the full suite yet), and check its output names every test the commits added. Red here means the report was wrong: resume it in `Mode: fix` with the failing output as the brief. That run does not count as a review round.
+Never trust the self-report. On `DONE`: `git -C <WORKTREE> status --porcelain` must be empty, `git log <BASE>..HEAD --oneline` must show the commits, and you run every task's Verify command yourself, once, in one go (not the full suite yet), and check its output names every test the commits added. Red here means the report was wrong: resume it in `Mode: fix` with the failing output as the brief. That run does not count as a review round.
 
 ## 5. Review loop
 
 Let `r = 1`, `cap` from §0 (default 2). Each round:
 
-1. **Snapshot.** Refuse to start on a dirty tree. `git -C <WORKTREE> diff origin/main...HEAD > <SCRATCH>/dev-loop/<branch>/round-<r>.patch`; keep `--stat` for the report. From round 2, set `FIXES_FROM` to the HEAD the previous round reviewed and also write the fix commits alone: `git -C <WORKTREE> diff <FIXES_FROM>..HEAD > <SCRATCH>/dev-loop/<branch>/round-<r>-fixes.patch`. Every finder and verifier reads the same files, so they all see an identical diff.
+1. **Snapshot.** Refuse to start on a dirty tree. `git -C <WORKTREE> diff <BASE>...HEAD > <SCRATCH>/dev-loop/<branch>/round-<r>.patch`; keep `--stat` for the report. From round 2, set `FIXES_FROM` to the HEAD the previous round reviewed and also write the fix commits alone: `git -C <WORKTREE> diff <FIXES_FROM>..HEAD > <SCRATCH>/dev-loop/<branch>/round-<r>-fixes.patch`. Every finder and verifier reads the same files, so they all see an identical diff.
 2. **Review with `pr-review`.** Invoke the [`pr-review`](../pr-review/SKILL.md) skill on round 1 and run its §3–§9 every round, passing the run context block, the plan path, `Round: <r>`, and:
    - round 1: the round's patch and `Depth: <depth from §0>`;
    - round 2+: the fixes patch as the diff file, the round's patch as the full diff, `Delta from: <FIXES_FROM>`, `Depth: quick`, and the prior verdict table. The fixes are small and step 6 already re-ran each fixed item's verify command, so the whole branch isn't reviewed again.
@@ -113,14 +118,14 @@ Print `pr-review`'s verdict table after each round.
 
 Run `TEST_CMD` and `LINT_CMD` in full, fresh, in this message. Red → `test-failure-triage`:
 
-- pre-existing (also fails on `origin/main`) → note for the final report;
+- pre-existing (also fails on `<BASE>`) → note for the final report;
 - in-branch → resume the implementer once more in `Mode: fix` with the failing output (separate cap of 2, not a review round), then re-run both commands.
 
 Mechanical lint fixes (`cargo fmt`, `biome format`) also go through the implementer. The orchestrator never edits the worktree, even for that.
 
 ## 7. Ship
 
-- **Default:** invoke `open-pr` and tell it to open as a **draft**. The body is `open-pr`'s terse template fill and nothing else: review rounds, findings, judgment calls, deferred items, and pre-existing failures all go to the user in §8, never into the PR. No Claude attribution anywhere.
+- **Default:** invoke `open-pr` and tell it to open as a **draft** against `<BASE>`. The body is `open-pr`'s terse template fill and nothing else: review rounds, findings, judgment calls, deferred items, and pre-existing failures all go to the user in §8, never into the PR. No Claude attribution anywhere.
 - `ready` → the same, non-draft.
 - `merge` → invoke `ship-pr` (non-draft). If any DEFERRED_TO_USER item exists, tell `ship-pr` "stop before merge".
 - `no-pr` → end here; push nothing.

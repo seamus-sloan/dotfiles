@@ -106,6 +106,8 @@ wt switch ^ && git pull      # default-branch worktree, updated
 3. Only then delete the merged branch: `gh api -X DELETE "repos/<owner>/<repo>/git/refs/heads/<branch>"`.
 4. Merge `main` into the next branch (a merge, never a rebase) and push, so its diff shows only its own changes. The squash leaves that branch holding older copies of lines `main` now has; resolve those conflicts toward the branch.
 
+**A stack into a feature branch** (the bottom PR targets a feature branch, not `main`): first resolve every stack PR's review threads with `resolve-pr-comments`, since threads left on a squashed PR are orphaned. Then merge top-down, each PR squashed into its own direct base (`gh pr merge <top> --squash`, then the next one down), so nothing is retargeted and nothing conflicts. Only the feature branch's PR into `main` closes issues (see `open-pr`).
+
 **Confirm the issue closed.** If this PR was meant to resolve a tracked issue, verify the merge auto-closed it (the `Closes #<n>` line from step 1 does this):
 
 ```bash

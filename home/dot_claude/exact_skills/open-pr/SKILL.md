@@ -63,6 +63,8 @@ If this PR fully resolves a tracked issue, the body **must** contain a GitHub cl
 - **Partially addresses** it (one sub-task of a larger issue) → reference it *without* a closing keyword: `Part of #<n>` / `Sub-task of #<n>`. A closing keyword here would wrongly close the parent.
 - **A bare `#<n>`** mention (no keyword) never closes anything — it only cross-links. Don't rely on it to close an issue.
 
+**A PR whose base isn't the default branch never closes anything**, since GitHub fires closing keywords only on a merge into the default branch. Slice PRs in a stack say `Part of #<n>`; the PR that finally reaches the default branch carries `Closes` for the epic and every slice's issue. Never hardcode `--base main`: pass the base the work actually targets.
+
 A ticket in the repo's own prefix **is** a GitHub issue number: `DOT-12/slug` → `Closes #12`, `OMNI-340/slug` → `Closes #340`. The prefixes live in `~/.config/git/issue-prefixes`; a key that isn't listed there (`ADA-120`) is a Jira ticket and closes nothing on GitHub.
 
 Determine the issue number from the branch name (`<TICKET>/…`, `<n>/…`, `feat/<n>-…`), the conversation ("ship issue #N", a pasted issue URL), or the commit body. When you can't tell whether the PR *fully* resolves it, prefer `Part of #<n>` and say so — under-closing is recoverable, wrongly closing a parent epic is noise. If the template has a dedicated "Closes/Fixes" or "Related issues" field, use that instead of appending to Summary.
@@ -94,7 +96,7 @@ Before opening, scan the repo's `CLAUDE.md` / `.claude/` / `CONTRIBUTING.md` for
 If `gh` still can't infer the repo or the branch, pass them explicitly rather than hopping between directories:
 
 ```bash
-gh pr create --repo <owner>/<repo> --base main --head <branch> --assignee @me --label <type> ...
+gh pr create --repo <owner>/<repo> --base <base> --head <branch> --assignee @me --label <type> ...
 ```
 
 Get the branch from `git branch --show-current` and the repo slug from `gh repo view --json nameWithOwner --jq .nameWithOwner`.

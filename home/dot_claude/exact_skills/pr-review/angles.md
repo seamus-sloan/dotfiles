@@ -64,6 +64,16 @@ Concurrency:
 - non-atomic status transitions;
 - blocking calls inside async code: sync I/O, `sleep`, a `std` mutex held across `.await`.
 
+Multi-writer sync (two clients, a device and the server, or two devices editing the same record):
+
+- one clock per field: a status change must not re-date the position, nor the reverse;
+- an explicit, user-chosen value beats one the system inferred, and the inferred one can still recover once the user acts again;
+- paging cursors are compound `(time, id)`, never time alone;
+- no `>` comparison on whole-second timestamps, which loses a write in the same second;
+- a tombstone holds: no other writer can bring a deleted row back;
+- a transient failure (a 5xx, a timeout) is never recorded as a permanent skip;
+- trace one cross-client reversal end to end: client A changes field X, client B then acts on field Y, and the record still converges to what a user expects.
+
 ## safety — data safety, trust boundaries, operations (defect)
 
 **Prevent:** never interpolate input into SQL, shell or HTML, validate untrusted input (user, network, LLM) before it is stored, rendered, fetched or run, keep gated features behind their gate, and leave how developers build and run the code alone unless the spec changes it.

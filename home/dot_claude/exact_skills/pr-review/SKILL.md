@@ -84,6 +84,16 @@ Round: <r>
 
 Dispatch one `review-finder` for each finder in the depth's row of the finder table in [angles.md](angles.md), plus one for `ui` when the diff touches UI files, all in one message and in the foreground (`run_in_background: false`), since the next step needs every result. Each gets the context block, its angles' names and full sections pasted from `angles.md`, and, from round 2, the prior verdict table. At `deep`, dispatch with `effort: max`; the agents default to `high`.
 
+### Finders and verifiers on a non-Claude model
+
+When the user asks for another model, dispatch through T3's `delegate_task` instead of `Agent`. Take the provider and model ids from `orchestrator_capabilities`. The model approved for review is **MiMo v2.6 Pro** (`xiaomi-token-plan-sgp/mimo-v2.6-pro` on the `opencode` provider). The `review-finder` and `review-verifier` agent types don't exist there, so:
+
+- tell each delegate to read `~/.claude/agents/review-finder.md` (or `review-verifier.md`) first and follow it;
+- have each write its report to `<SCRATCH>/pr-review/<slug>/<role>-<n>.md`. A missing file means not done, whatever the task status says;
+- before calling one stuck, read its thread (`t3_thread_read`), not the status summary, which lags. A delegate that ended on "now reading…" with no report gets one nudge to finish and write the file;
+- run one panel at a time, since a `quota exhausted` status fails the rest;
+- after two no-report failures in a round, move that angle to a Claude `review-finder` and say so in the report.
+
 ## 5. Merge and dedupe
 
 Put every candidate, including `Also noticed` blocks, in one table, with IDs keeping their angle prefix (`line-2`, `callers-1`) and the finder that reported each.
