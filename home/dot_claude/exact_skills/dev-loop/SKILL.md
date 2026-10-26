@@ -34,7 +34,7 @@ Parse `$ARGUMENTS`. The first token that is an integer, `#n`, or an issue URL na
 | `ready` | open a non-draft PR |
 | `merge` | implies `ready`; run `ship-pr` fully at §7 |
 | `no-pr` | stop after §6 (green tests); push nothing |
-| `rounds=N` | review-round cap (default **2**, hard max 5) |
+| `rounds=N` | review-round cap (default **2**, hard max 5); every round, the last included, gets its fix pass |
 | `depth=<d>` | round-1 review depth: `quick`, `standard` (default) or `deep` (see `pr-review`); later rounds always run `quick` on the fix commits |
 | `branch=<name>` | the branch and worktree already exist; skip §2's create |
 | `base=<branch>` | branch from and target `<branch>` (a feature branch, or the slice below in a stack) instead of `main`: `<BASE>` below becomes `origin/<branch>` everywhere, including `--base` at §7 |
@@ -107,10 +107,10 @@ Let `r = 1`, `cap` from §0 (default 2). Each round:
 
    It dispatches the finders, verifies their candidates, rules on each row, and returns the verdict table. Its rulings go to the user in the final report (§8), never into the PR: judgment calls with their rationale, so the user can overrule them; DEFERRED_TO_USER items, which never block the loop but block a `merge` run exactly like a `ship-pr` deferral.
 3. **Severity gate.** CRITICAL and MAJOR items, CONFIRMED or PLAUSIBLE, always enter the brief. MINOR and excess (`Kind: excess`) items enter only if the fix is under ~5 lines; otherwise they are reported, not fixed.
-4. **Exit check.** Empty brief → loop done, go to §6. `r == cap` with a non-empty brief → do not fix; go to §6 with the brief listed as unresolved, and open no PR unless the user overrode (`ready` / `merge` still stop here and hand back). Convergence guard: a row CONFIRMED or PLAUSIBLE in two consecutive rounds after a fix attempt → the next implementer run is a fresh dispatch on Opus (`model: "opus"`); still unresolved at the cap → `BLOCKED`, hand back.
+4. **Exit check.** Empty brief → loop done, go to §6. `r == cap` with a non-empty brief → still run steps 5–6 (the last round gets its fix pass too), but don't review again: step 6's verify commands check the fixes, then go to §6. Any item that's still failing is listed as unresolved, and no PR is opened unless the user overrode (`ready` / `merge` still stop and hand back). Convergence guard: a row CONFIRMED or PLAUSIBLE in two consecutive rounds after a fix attempt → the next implementer run is a fresh dispatch on Opus (`model: "opus"`); still unresolved at the cap → `BLOCKED`, hand back.
 5. **Fix brief.** One block per CONFIRMED or PLAUSIBLE item that passed the gate (a PLAUSIBLE item carries its "what would confirm" line, and its fix is a guard against that trigger): ID, verdict, location, what to change (the finding's suggested fix or simpler alternative), and the verify command that must pass afterwards. A PLAUSIBLE item's verify command is the test the implementer writes for its "what would confirm" condition. Append: "Do not touch DISMISSED, JUDGMENT-kept, or DEFERRED items: <ids>. Commit as `fix:` on top. Never amend."
 6. **Resume** the implementer with `Mode: fix` and the brief. Handle status as in §4. On `DONE`, run each CONFIRMED item's verify command yourself; anything still failing keeps its verdict into the next round. A PLAUSIBLE item's command may have passed before the fix too, so it clears only when the fix commits add a test for its "what would confirm" condition and that test passes when you run it; otherwise it stays PLAUSIBLE into the next round. If the implementer's first run of that test failed, report the item as CONFIRMED.
-7. `r += 1`; back to step 1.
+7. `r == cap` → go to §6. Otherwise `r += 1`; back to step 1.
 
 Print `pr-review`'s verdict table after each round.
 
