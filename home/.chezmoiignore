@@ -24,7 +24,8 @@
 .claude/skills/diagnose-crash
 .claude/skills/omarchy
 
-# macOS only; Arch gets the same baseline from run_onchange_pacman-packages.sh.
+# macOS only; Arch gets the Brewfile baseline from run_onchange_pacman-packages.sh.
 {{ if ne .chezmoi.os "darwin" -}}
 .Brewfile
+.hammerspoon
 {{ end -}}

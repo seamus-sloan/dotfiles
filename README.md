@@ -22,6 +22,7 @@ secrets, just files; templates only pick the OS's package manager.
 | **Git** | [`home/dot_gitconfig`](home/dot_gitconfig), [`home/dot_config/private_git`](home/dot_config/private_git) | Global hooks enforce ticket-prefixed branches and auto-link commits to GitHub issues |
 | **Shell** | [`home/dot_config/shell`](home/dot_config/shell) | Shared zsh aliases, sourced from a machine-local `~/.zshrc` |
 | **Worktrunk** | [`home/dot_config/worktrunk`](home/dot_config/worktrunk) | [`wt`](https://worktrunk.dev) config for worktree-per-branch workflow |
+| **Hammerspoon** | [`home/dot_hammerspoon`](home/dot_hammerspoon) | macOS only: ⌘G toggles Rex, docked to the top of the screen under the mouse at the same share of its height |
 | **Claude Code** | [`home/dot_claude`](home/dot_claude) | Global instructions, coding standards, skills, hooks, and statusline |
 | **opencode** | [`home/dot_config/opencode`](home/dot_config/opencode) | Bedrock providers, plus the Claude Code config reused rather than duplicated — see [`docs/opencode.md`](docs/opencode.md) |
 | **Packages** | [`home/dot_Brewfile`](home/dot_Brewfile), [`home/.chezmoiscripts`](home/.chezmoiscripts) | Shared package baseline — Homebrew on macOS, pacman (plus mise, cargo, npm) on Arch; installs everywhere, never uninstalls machine-local extras |

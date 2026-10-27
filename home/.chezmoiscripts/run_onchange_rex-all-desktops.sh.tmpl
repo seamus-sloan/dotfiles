@@ -1,0 +1,8 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/sh
+# Pins Rex to every desktop so ⌘G (~/.hammerspoon) shows it on the current one;
+# Hammerspoon can't move windows between desktops on macOS 15+.
+set -e
+defaults write com.apple.spaces app-bindings -dict-add com.superlogical.rex AllSpaces
+killall Dock
+{{ end -}}
