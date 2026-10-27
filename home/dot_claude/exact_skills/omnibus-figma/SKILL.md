@@ -1,6 +1,6 @@
 ---
 name: omnibus-figma
-description: House rules for working in the Omnibus Figma files through the figma-console MCP — auditing or cleaning up a file, renaming frames, checking a design's status against what shipped, building a comp or proposal section, and archiving or unpublishing a file or library. Use it whenever a task touches Omnibus UI, Omnibus DS · Foundations / Components, or any Omnibus Web · * file, even when the user only says "the Figma", "clean up the screens", "is this comp shipped", or "archive that file".
+description: House rules for working in the Omnibus Figma files through the figma-console MCP — auditing or cleaning up a file, renaming frames, checking a design's status against what shipped, building a comp or proposal section, and archiving or unpublishing a file or library. Use it whenever a task touches Omnibus DS · Foundations / Components, or any Omnibus Web · * file, even when the user only says "the Figma", "clean up the screens", "is this comp shipped", or "archive that file".
 ---
 
 # Omnibus Figma
@@ -12,7 +12,7 @@ The Omnibus design lives in Figma, and its conventions live only inside those fi
 - **Omnibus DS · Foundations**: tokens, styles, icons and the Docs kit (`Docs/Header`, `Docs/Status`, `Docs/Note`, `Docs/Cover`). A published library.
 - **Omnibus DS · Components**: every UI component. A published library.
 - **Omnibus Web · Library & Shelves**, **Books & Browse**, **Reading**, **Account & Admin**: one page per surface. Each page holds a `Header`, a `Desktop · 1440` section, and `Tablet · 768` / `Phone · 390` sections where they apply.
-- **Omnibus UI**: the pre-split original. It is archived, so never treat it as a source of truth, and never copy from it.
+- **Omnibus UI**: the pre-split original, deleted on 2026-10-27. Everything it held lives in the files above.
 
 Map a file name to its key with `grep -aoE '"path":"/(file|design)/[A-Za-z0-9]{22}"[^}]{0,200}"title":"Omnibus[^"]*"' ~/.config/Figma/settings.json`.
 
