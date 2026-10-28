@@ -46,10 +46,14 @@ flowchart TD
       R1F --> V
     end
 
+    T1["<span style='font-size:13px;color:rgb(75,85,99)'>Ticket: assigned to you, moved to In Progress.</span>"]:::note
+    T2["<span style='font-size:13px;color:rgb(75,85,99)'>Ticket: moved to In Review.</span>"]:::note
+    T3["<span style='font-size:13px;color:rgb(75,85,99)'>Ticket: moved to Done.</span>"]:::note
     DONE["<span style='font-size:13px;color:rgb(75,85,99)'>Nothing left to fix: the orchestrator runs the full tests and lint.</span>"]:::note
     OPEN["<span style='font-family:ui-monospace,monospace;font-weight:700;font-size:15px;white-space:nowrap;color:rgb(17,24,39)'>open-pr</span><br/><span style='font-size:13px;color:rgb(75,85,99)'>Opens a draft PR.</span><br/><span style='display:inline-block;white-space:nowrap;margin-top:6px;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600;color:rgb(107,114,128);border:1px solid rgb(107,114,128)'>Skill</span>"]:::skill
     SHIP["<span style='font-family:ui-monospace,monospace;font-weight:700;font-size:15px;white-space:nowrap;color:rgb(17,24,39)'>ship-pr</span><br/><span style='font-size:13px;color:rgb(75,85,99)'>Opens the PR, waits for Copilot and CI, then squash-merges.</span><br/><span style='display:inline-block;white-space:nowrap;margin-top:6px;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600;color:rgb(107,114,128);border:1px solid rgb(107,114,128)'>Skill</span>"]:::skill
 
+    T1 --> P
     P --> I
     I -->|rounds 2+| R2
     I -->|round 1| R1
@@ -58,6 +62,8 @@ flowchart TD
     R2 & R1 -->|clean| DONE
     DONE --> OPEN
     DONE -.->|merge| SHIP
+    OPEN --> T2
+    SHIP --> T3
   end
 
   style O fill:#f3f4f6,stroke:#374151
