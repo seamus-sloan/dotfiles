@@ -122,6 +122,8 @@ gh issue close <n> --comment "Shipped in #<pr>."
 
 Leave it open only when the PR was a partial (`Part of #<n>`) — say so in the report.
 
+**Move the ticket to Done.** When the PR resolved a ticket (the `Closes #<n>` issue, or the Jira or Linear key the branch is named for) and wasn't a partial, set it to Done by [`../dev-loop/tickets.md`](../dev-loop/tickets.md). A failure there is reported, never a reason to stop.
+
 ## 6. Final report
 
 Print a compact end-state summary: PR URL, merge status (merged / stopped-before-merge / handed-back), how many review rounds ran, comment tallies (fixed / deferred / pushed-back), and the final CI verdict. If the pipeline stopped early, state exactly what's blocking and what you need from the user to continue.
