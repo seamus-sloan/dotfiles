@@ -93,7 +93,7 @@ Read every bucket, not just the failures: CI is green only when no check is `pen
 - **A new `fail` (or `cancel`):** for an Actions check, the job ID ends its `link` (`…/job/<id>`). Read that job's log right away, even while other jobs are still running: `gh api "repos/<owner>/<repo>/actions/jobs/<id>/logs" | tail -200`. `gh run view --log-failed` waits for the whole run, so don't use it here. For a check from an external app, open its `link`.
 - **A genuine failure in this branch's code** (fmt, clippy, a broken test): fix it as a fresh commit on top, exactly like a fix-now review comment (never `--amend` the pushed tip), and push. Auto-merge stays armed, the push restarts CI on the new head, and you keep polling. There's no re-review wait, since Copilot only reviews once.
 - **Plainly a flake or infra blip:** GitHub reruns a job only once its run has finished, so wait for that run, then `gh run rerun <run-id> --failed` once. If it fails again the same way, run `gh pr merge <pr> --disable-auto`, then stop and surface it. Don't let it merge over red.
-- **A red check that isn't required:** auto-merge won't wait for it. Run `gh pr merge <pr> --disable-auto` before fixing it, and re-arm once every check is green.
+- **A check that isn't required:** the repo chose not to block merges on it, so auto-merge won't wait, even while it's pending. Fix it if this branch broke it, but don't hold the merge for it.
 - **A `SKIPPED` Playwright check is not a pass** if the diff touches UI. It means the `run_ui_tests` label is missing (step 1). Add the label, which re-triggers the workflow, and keep polling.
 
 The loop ends when `state` is `MERGED`. If every check is green and the PR still hasn't merged a few minutes later, `mergeStateStatus` says why, most often a required approval. Stop and report it rather than waiting forever.
@@ -140,7 +140,7 @@ Print a compact end-state summary: PR URL, merge status (merged / stopped-before
 
 - **Never amend or force-push a pushed commit.** Every fix — review-driven or CI-driven — lands as a fresh commit on top. A `git push` rejected as non-fast-forward means this rule was broken; recover with `git reset --soft origin/<branch>` and redo. (Same invariant as `resolve-pr-comments` §0.)
 - **Never merge, or arm auto-merge, with a deferral or push-back on a person's comment awaiting the user.** Those are the user's decisions; auto-merge stays off until they're cleared. Bot comments dismissed by `resolve-pr-comments` don't block.
-- **Never merge over a red or falsely-skipped check.** A `SKIPPED` E2E check on a UI diff is a missing label, not a pass. Auto-merge only guards the required checks, so never arm it on a base with none, and disarm it while any other check is red.
+- **Never merge over a red or falsely-skipped required check.** A `SKIPPED` E2E check on a UI diff is a missing label, not a pass. Auto-merge guards only the required checks, so never arm it on a base with none.
 - **Never request Copilot twice.** Request it only when it's neither requested nor has reviewed (step 2); a second request starts a second review.
 - **Never delete a merged branch another open PR still uses as its base.** Retarget that PR first, or GitHub closes it.
 - **Never invent a review or CI state.** Poll the real API; if a signal never arrives within the timeout, say so and act on the documented fallback, don't assume.
