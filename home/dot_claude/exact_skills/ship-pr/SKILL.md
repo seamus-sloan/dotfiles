@@ -96,7 +96,7 @@ Read every bucket, not just the failures: CI is green only when no check is `pen
 - **A check that isn't required:** the repo chose not to block merges on it, so auto-merge won't wait, even while it's pending. Fix it if this branch broke it, but don't hold the merge for it.
 - **A `SKIPPED` Playwright check is not a pass** if the diff touches UI. It means the `run_ui_tests` label is missing (step 1). Run `gh pr merge <pr> --disable-auto`, add the label, which re-triggers the workflow, and re-arm once Playwright passes.
 
-The loop ends when `state` is `MERGED`. If every check is green and the PR still hasn't merged a few minutes later, `mergeStateStatus` says why, most often a required approval. Stop and report it rather than waiting forever.
+The loop ends when `state` is `MERGED`. In "don't merge" mode nothing is armed, so it ends when CI is green; hand back there and skip step 5. If every check is green and the PR still hasn't merged a few minutes later, `mergeStateStatus` says why, most often a required approval. Stop and report it rather than waiting forever.
 
 ## 5. After the merge
 
