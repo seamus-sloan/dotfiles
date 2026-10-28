@@ -8,5 +8,6 @@
 #
 # <repo name>   <PREFIX>
 omnibus         OMNI
+omnibus-android OMNI
 dotfiles        DOT
 bookmap         MAP
