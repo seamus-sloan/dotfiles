@@ -1,6 +1,6 @@
 ---
 name: ship-pr
-description: End-to-end PR pipeline — open the PR, wait for Copilot's review, resolve every comment, wait for CI to go green, then squash-merge. Triggers when the user asks to "ship this PR", "ship-pr", "open a PR and merge it", "take this all the way to merge", or otherwise wants the open→review→resolve→merge loop run unattended.
+description: End-to-end PR pipeline — open the PR, wait for Copilot's review, resolve every comment, turn on auto-merge, fix each CI failure as it lands, then clean up after the merge. Triggers when the user asks to "ship this PR", "ship-pr", "open a PR and merge it", "take this all the way to merge", or otherwise wants the open→review→resolve→merge loop run unattended.
 ---
 
 # Ship a PR (open → review → resolve → CI → merge)
@@ -31,7 +31,7 @@ Invoke the **`open-pr`** skill. It picks the title, fills the body from the repo
   ```bash
   gh pr edit <pr> --add-label run_ui_tests
   ```
-- **Issue-closing keyword.** `open-pr` is responsible for putting a `Closes #<n>` (or `Fixes #<n>`) line in the body when the PR fully resolves a tracked issue — see its "Closing keyword" section. When ship-pr was invoked *for an issue* ("ship #1186", a pasted issue URL), confirm that line made it into the body before moving on; if it's missing, add it with `gh pr edit <pr> --body-file`, running `open-pr`'s saved-copy check (§8) first. Use `Part of #<n>` (no keyword) when the PR is only one sub-task of a larger issue, so the merge doesn't wrongly close the parent. This is what makes step 5's merge auto-close the issue.
+- **Issue-closing keyword.** `open-pr` is responsible for putting a `Closes #<n>` (or `Fixes #<n>`) line in the body when the PR fully resolves a tracked issue — see its "Closing keyword" section. When ship-pr was invoked *for an issue* ("ship #1186", a pasted issue URL), confirm that line made it into the body before moving on; if it's missing, add it with `gh pr edit <pr> --body-file`, running `open-pr`'s saved-copy check (§8) first. Use `Part of #<n>` (no keyword) when the PR is only one sub-task of a larger issue, so the merge doesn't wrongly close the parent. This is what makes the merge auto-close the issue.
 
 ## 2. Wait for Copilot's review
 
@@ -70,27 +70,35 @@ Then branch on its outcome:
 
 Convergence guard: comment resolution is a single round (Copilot won't re-review), but if CI-driven fixes keep churning past ~3 rounds, stop and surface what's still failing rather than looping indefinitely.
 
-## 4. Wait for CI to go green
+## 4. Arm auto-merge, then fix CI as each check fails
 
-Once comments are settled and the branch is stable, wait on the checks:
-
-```bash
-gh pr checks <pr> --watch --fail-fast
-```
-
-- `--watch` blocks until every required check finishes; exit code `0` means all passed.
-- **A `SKIPPED` Playwright check is not a pass** if the diff touches UI — it means the `run_ui_tests` label is missing (step 1). Add the label, which re-triggers the workflow, then re-watch.
-- **On a red check:** read the failing job's log (`gh run view <run-id> --log-failed`). If it's a genuine failure in this branch's code (fmt, clippy, a broken test), that's real work — **fix it** as a fresh commit on top, exactly like a fix-now review comment (never `--amend` the pushed tip), push, and re-watch the checks (no re-review wait — Copilot only reviews once). If it's plainly a flake or infra blip, re-run (`gh run rerun <run-id> --failed`) once; if it fails again the same way, stop and surface it — don't merge over red.
-
-## 5. Merge
-
-When CI is green **and** step 3 left nothing awaiting the user **and** the user didn't say "don't merge":
+Once comments are settled, and unless the user said "don't merge", hand the merge to GitHub. On a UI diff, first confirm the PR carries `run_ui_tests` (step 1): GitHub counts a skipped required check as passed, so arming without it can merge over an E2E run that never happened.
 
 ```bash
-gh pr merge <pr> --squash --delete-branch
+gh pr checks <pr> --required          # must list at least one check
+gh pr merge <pr> --auto --squash --delete-branch
 ```
 
-Squash is the default (one commit per PR, matching the conventional-commit-title convention). Use `--merge` or `--rebase` only if the user asked for it in step 0. `--delete-branch` cleans up the remote head branch after merge.
+Auto-merge waits only on **required** checks. On a base with none, GitHub has nothing to wait for, so `--auto` either errors or merges at once, over pending or red CI. So arm it only when `--required` lists a check. If none are required, or the repo doesn't allow auto-merge, don't arm it (and don't change the repo's settings). Run this step's loop until every check passes, then merge it yourself with the same command minus `--auto`. Use `--merge` or `--rebase` instead of `--squash` only if the user asked in step 0.
+
+Then poll every 30–60s, and act on each failure as soon as it lands rather than waiting for the other lanes:
+
+```bash
+gh pr view <pr> --json state,headRefOid,mergeStateStatus --jq '{state, headRefOid, mergeStateStatus}'
+gh pr checks <pr> --json name,bucket,link --jq '.[] | {name, bucket, link}'
+```
+
+Read every bucket, not just the failures: CI is green only when no check is `pending`, `fail` or `cancel`, and each `skipping` check really had nothing to run.
+
+- **A new `fail` (or `cancel`):** for an Actions check, the job ID ends its `link` (`…/job/<id>`). Read that job's log right away, even while other jobs are still running: `gh api "repos/<owner>/<repo>/actions/jobs/<id>/logs" | tail -200`. `gh run view --log-failed` waits for the whole run, so don't use it here. For a check from an external app, open its `link`.
+- **A genuine failure in this branch's code** (fmt, clippy, a broken test): fix it as a fresh commit on top, exactly like a fix-now review comment (never `--amend` the pushed tip), and push. Auto-merge stays armed, the push restarts CI on the new head, and you keep polling. There's no re-review wait, since Copilot only reviews once.
+- **Plainly a flake or infra blip:** GitHub reruns a job only once its run has finished, so wait for that run, then `gh run rerun <run-id> --failed` once. If it fails again the same way, run `gh pr merge <pr> --disable-auto`, then stop and surface it. Don't let it merge over red.
+- **A check that isn't required:** the repo chose not to block merges on it, so auto-merge won't wait, even while it's pending. Fix it if this branch broke it, but don't hold the merge for it.
+- **A `SKIPPED` Playwright check is not a pass** if the diff touches UI. It means the `run_ui_tests` label is missing (step 1). Run `gh pr merge <pr> --disable-auto`, add the label, which re-triggers the workflow, and re-arm once Playwright passes.
+
+The loop ends when `state` is `MERGED`. In "don't merge" mode nothing is armed, so it ends when CI is green; hand back there and skip step 5. If every check is green and the PR still hasn't merged a few minutes later, `mergeStateStatus` says why, most often a required approval. Stop and report it rather than waiting forever.
+
+## 5. After the merge
 
 After merging, sync local state so the next change starts from the merged tip:
 
@@ -101,12 +109,12 @@ wt switch ^ && git pull      # default-branch worktree, updated
 
 **Stacked PRs.** Merge bottom-up. When another open PR uses this PR's branch as its base, deleting that branch closes the dependent PR instead of retargeting it, so for every PR but the top of the stack:
 
-1. Merge without deleting: `gh pr merge <pr> --squash`.
+1. Arm it without deleting: `gh pr merge <pr> --auto --squash`, and wait for it to merge.
 2. Retarget the next PR: `gh pr edit <next> --base main`.
 3. Only then delete the merged branch: `gh api -X DELETE "repos/<owner>/<repo>/git/refs/heads/<branch>"`.
 4. Merge `main` into the next branch (a merge, never a rebase) and push, so its diff shows only its own changes. The squash leaves that branch holding older copies of lines `main` now has; resolve those conflicts toward the branch.
 
-**A stack into a feature branch** (the bottom PR targets a feature branch, not `main`): first resolve every stack PR's review threads with `resolve-pr-comments`, since threads left on a squashed PR are orphaned. Then merge top-down, each PR squashed into its own direct base (`gh pr merge <top> --squash`, then the next one down), so nothing is retargeted and nothing conflicts. Only the feature branch's PR into `main` closes issues (see `open-pr`).
+**A stack into a feature branch** (the bottom PR targets a feature branch, not `main`): first resolve every stack PR's review threads with `resolve-pr-comments`, since threads left on a squashed PR are orphaned. Then merge top-down, each PR squashed into its own direct base (`gh pr merge <top> --squash`, then the next one down; a feature branch rarely has required checks, so these merge by hand once green), so nothing is retargeted and nothing conflicts. Only the feature branch's PR into `main` closes issues (see `open-pr`).
 
 **Confirm the issue closed.** If this PR was meant to resolve a tracked issue, verify the merge auto-closed it (the `Closes #<n>` line from step 1 does this):
 
@@ -131,8 +139,8 @@ Print a compact end-state summary: PR URL, merge status (merged / stopped-before
 ## Hard rules
 
 - **Never amend or force-push a pushed commit.** Every fix — review-driven or CI-driven — lands as a fresh commit on top. A `git push` rejected as non-fast-forward means this rule was broken; recover with `git reset --soft origin/<branch>` and redo. (Same invariant as `resolve-pr-comments` §0.)
-- **Never merge with a deferral or push-back on a person's comment awaiting the user.** Those are the user's decisions; auto-merge is suspended until they're cleared. Bot comments dismissed by `resolve-pr-comments` don't block.
-- **Never merge over a red or falsely-skipped required check.** A `SKIPPED` E2E check on a UI diff is a missing label, not a pass.
+- **Never merge, or arm auto-merge, with a deferral or push-back on a person's comment awaiting the user.** Those are the user's decisions; auto-merge stays off until they're cleared. Bot comments dismissed by `resolve-pr-comments` don't block.
+- **Never merge over a red or falsely-skipped required check.** A `SKIPPED` E2E check on a UI diff is a missing label, not a pass. Auto-merge guards only the required checks, so never arm it on a base with none.
 - **Never request Copilot twice.** Request it only when it's neither requested nor has reviewed (step 2); a second request starts a second review.
 - **Never delete a merged branch another open PR still uses as its base.** Retarget that PR first, or GitHub closes it.
 - **Never invent a review or CI state.** Poll the real API; if a signal never arrives within the timeout, say so and act on the documented fallback, don't assume.
