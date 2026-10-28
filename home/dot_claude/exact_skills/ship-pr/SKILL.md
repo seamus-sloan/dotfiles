@@ -72,7 +72,7 @@ Convergence guard: comment resolution is a single round (Copilot won't re-review
 
 ## 4. Arm auto-merge, then fix CI as each check fails
 
-Once comments are settled, and unless the user said "don't merge", hand the merge to GitHub:
+Once comments are settled, and unless the user said "don't merge", hand the merge to GitHub. On a UI diff, first confirm the PR carries `run_ui_tests` (step 1): GitHub counts a skipped required check as passed, so arming without it can merge over an E2E run that never happened.
 
 ```bash
 gh pr checks <pr> --required          # must list at least one check
@@ -94,7 +94,7 @@ Read every bucket, not just the failures: CI is green only when no check is `pen
 - **A genuine failure in this branch's code** (fmt, clippy, a broken test): fix it as a fresh commit on top, exactly like a fix-now review comment (never `--amend` the pushed tip), and push. Auto-merge stays armed, the push restarts CI on the new head, and you keep polling. There's no re-review wait, since Copilot only reviews once.
 - **Plainly a flake or infra blip:** GitHub reruns a job only once its run has finished, so wait for that run, then `gh run rerun <run-id> --failed` once. If it fails again the same way, run `gh pr merge <pr> --disable-auto`, then stop and surface it. Don't let it merge over red.
 - **A check that isn't required:** the repo chose not to block merges on it, so auto-merge won't wait, even while it's pending. Fix it if this branch broke it, but don't hold the merge for it.
-- **A `SKIPPED` Playwright check is not a pass** if the diff touches UI. It means the `run_ui_tests` label is missing (step 1). Add the label, which re-triggers the workflow, and keep polling.
+- **A `SKIPPED` Playwright check is not a pass** if the diff touches UI. It means the `run_ui_tests` label is missing (step 1). Run `gh pr merge <pr> --disable-auto`, add the label, which re-triggers the workflow, and re-arm once Playwright passes.
 
 The loop ends when `state` is `MERGED`. If every check is green and the PR still hasn't merged a few minutes later, `mergeStateStatus` says why, most often a required approval. Stop and report it rather than waiting forever.
 
