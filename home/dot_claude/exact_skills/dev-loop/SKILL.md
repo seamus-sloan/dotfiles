@@ -1,7 +1,7 @@
 ---
 name: dev-loop
 description: Agentic development loop — branch → plan → implement → panel review via pr-review (finders covering every review angle, verifiers, the orchestrator rules on each; later rounds review only the fixes) → fix → test → draft PR. Triggers when the user says "/dev-loop <issue # or spec>", "dev-loop this", "run the dev loop on #123", "take this issue end to end".
-argument-hint: "<issue # | issue URL | spec file | spec text> [ready] [merge] [no-pr] [rounds=N] [depth=quick|standard|deep] [branch=<name>] [base=<branch>] [plan=<path>]"
+argument-hint: "<issue # | issue URL | ticket key | spec file | spec text> [ready] [merge] [no-pr] [rounds=N] [depth=quick|standard|deep] [branch=<name>] [base=<branch>] [plan=<path>]"
 ---
 
 # dev-loop (branch → plan → implement → panel review → fix → test → PR)
@@ -16,6 +16,7 @@ The session running this skill is the **orchestrator**. It plans, dispatches, ju
 | Judge findings | **the orchestrator itself**, by `pr-review`'s verify-and-rule steps — there is no referee |
 | Verify | [`verify-before-claim`](../verify-before-claim/SKILL.md), [`test-failure-triage`](../test-failure-triage/SKILL.md) |
 | Ship | [`open-pr`](../open-pr/SKILL.md), or [`ship-pr`](../ship-pr/SKILL.md) with `merge` |
+| Ticket state | the orchestrator, by [`tickets.md`](tickets.md): assigned and In Progress at §2, In Review at §7, Done on merge |
 
 Two invariants hold for the whole run:
 
@@ -26,7 +27,7 @@ Read `ship-pr` and `verify-before-claim` before running so their hard rules carr
 
 ## 0. Arguments
 
-Parse `$ARGUMENTS`. The first token that is an integer, `#n`, or an issue URL names a GitHub issue; a path to an existing file (a `grilling` summary, say) is the spec file; otherwise the leading text is the spec. Then honour these tokens anywhere in the arguments:
+Parse `$ARGUMENTS`. The first token that is an integer, `#n`, or an issue URL names a GitHub issue; a Jira or Linear key or URL names that ticket ([`tickets.md`](tickets.md) says which tracker); a path to an existing file (a `grilling` summary, say) is the spec file; otherwise the leading text is the spec. Then honour these tokens anywhere in the arguments:
 
 | Token | Effect |
 |---|---|
@@ -44,7 +45,7 @@ Natural-language forms are accepted ("and merge", "but don't open a PR", "not a 
 
 ## 1. Resolve the input; decide whether code is needed
 
-For an issue: `gh issue view <n> --json title,body,labels,comments`. For a spec file: read it. For a spec: use it verbatim.
+For an issue: `gh issue view <n> --json title,body,labels,comments`. For a Jira or Linear ticket: read it through its MCP. For a spec file: read it. For a spec: use it verbatim.
 
 Look at the code first. If no change is actually required (already fixed, not reproducible, a docs-only misunderstanding), say so and **stop here** — no branch is created.
 
@@ -52,7 +53,7 @@ Look at the code first. If no change is actually required (already fixed, not re
 
 ## 2. Branch and worktree
 
-1. Branch name: read `~/.config/git/issue-prefixes`. Issue work in a listed repo → `<PREFIX>-<n>/<slug>`. Otherwise ask for a ticket with one `AskUserQuestion`; if there is none, `u/sloan/<slug>`.
+1. Branch name: read `~/.config/git/issue-prefixes`. Issue work in a listed repo → `<PREFIX>-<n>/<slug>`. A Jira or Linear ticket → `<KEY>/<slug>`. Otherwise ask for a ticket with one `AskUserQuestion`; if there is none, `u/sloan/<slug>`.
 2. `git fetch origin && wt switch -c <branch> -b <BASE>` (`<BASE>` is `origin/main` unless `base=` set it). `wt switch` changes directory only in its own subprocess, so read `WORKTREE` from `wt list` (a `/` in the branch name becomes `-` in the directory), then confirm `git -C <WORKTREE> branch --show-current`.
 3. Read the repo's instruction files in this order, whichever exist at the worktree root: `CLAUDE.md`, `AGENTS.md`, `RULES.md`, then every `*.md` under `.claude/rules/`. Extract `TEST_CMD` and `LINT_CMD` (omnibus: `just test`, `just lint`). If neither file names them, ask once.
 4. Build the **run context block**. Every dispatch below receives it verbatim — subagents inherit nothing from this session:
@@ -68,6 +69,8 @@ Issue/spec: <#n title | first line of the spec>
 ```
 
 `<SCRATCH>` is the session scratchpad directory from the system prompt (fall back to `$TMPDIR/dev-loop`). Run artifacts live at `<SCRATCH>/dev-loop/<branch>/` and are never committed.
+
+5. **Start the ticket**, when the run has one: assign it to me and move it to In Progress, by [`tickets.md`](tickets.md).
 
 ## 3. Plan
 
@@ -130,6 +133,8 @@ Mechanical lint fixes (`cargo fmt`, `biome format`) also go through the implemen
 - `merge` → invoke `ship-pr` (non-draft). If any DEFERRED_TO_USER item exists, tell `ship-pr` "stop before merge".
 - `no-pr` → end here; push nothing.
 
+Once a PR is open and `ship-pr` hasn't merged it, move the ticket to In Review; a merge moves it to Done (`ship-pr` §5). Both by [`tickets.md`](tickets.md).
+
 ## 8. Final report
 
 ```
@@ -143,6 +148,7 @@ Pre-existing failures: <list | none>
 Judgment calls: <ID — decision — one-line why> | none
 Deferred to you: <ID — one line> | none
 PR: <url> (draft | ready | merged | not opened: <reason>)
+Ticket: <key> — <state>, assigned <me | someone else> | none | <what failed and the fix>
 Blocking: <what stopped the loop | nothing>
 ```
 
