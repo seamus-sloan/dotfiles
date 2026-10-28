@@ -85,10 +85,12 @@ Then poll every 30–60s, and act on each failure as soon as it lands rather tha
 
 ```bash
 gh pr view <pr> --json state,headRefOid,mergeStateStatus --jq '{state, headRefOid, mergeStateStatus}'
-gh pr checks <pr> --json name,bucket,link --jq '.[] | select(.bucket == "fail")'
+gh pr checks <pr> --json name,bucket,link --jq '.[] | {name, bucket, link}'
 ```
 
-- **A new `fail`:** for an Actions check, the job ID ends its `link` (`…/job/<id>`). Read that job's log right away, even while other jobs are still running: `gh api "repos/<owner>/<repo>/actions/jobs/<id>/logs" | tail -200`. `gh run view --log-failed` waits for the whole run, so don't use it here. For a check from an external app, open its `link`.
+Read every bucket, not just the failures: CI is green only when no check is `pending`, `fail` or `cancel`, and each `skipping` check really had nothing to run.
+
+- **A new `fail` (or `cancel`):** for an Actions check, the job ID ends its `link` (`…/job/<id>`). Read that job's log right away, even while other jobs are still running: `gh api "repos/<owner>/<repo>/actions/jobs/<id>/logs" | tail -200`. `gh run view --log-failed` waits for the whole run, so don't use it here. For a check from an external app, open its `link`.
 - **A genuine failure in this branch's code** (fmt, clippy, a broken test): fix it as a fresh commit on top, exactly like a fix-now review comment (never `--amend` the pushed tip), and push. Auto-merge stays armed, the push restarts CI on the new head, and you keep polling. There's no re-review wait, since Copilot only reviews once.
 - **Plainly a flake or infra blip:** GitHub reruns a job only once its run has finished, so wait for that run, then `gh run rerun <run-id> --failed` once. If it fails again the same way, run `gh pr merge <pr> --disable-auto`, then stop and surface it. Don't let it merge over red.
 - **A red check that isn't required:** auto-merge won't wait for it. Run `gh pr merge <pr> --disable-auto` before fixing it, and re-arm once every check is green.
