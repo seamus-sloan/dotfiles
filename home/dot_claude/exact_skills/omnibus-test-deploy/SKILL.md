@@ -48,18 +48,26 @@ ssh -o BatchMode=yes omnibus 'rm -f /tmp/omnibus-prodcopy.db'
 
 Check the copy: `pragma integrity_check` is `ok`, and `select count(*), sum(is_missing_files) from books` matches the same query run read-only on the Pi.
 
-**QA account.** The release image ignores `OMNIBUS_DEV_SEED_USER`, and a fresh prod copy has no test user. Carry the QA user (`koreader-qa` or whichever the user uses) forward from the outgoing build's DB into the new copy before it starts, so no public window opens:
+**QA account.** The release image ignores `OMNIBUS_DEV_SEED_USER`, and a fresh prod copy has no test user. Create a fresh `omnibus-qa` admin in the new copy before it starts, so no public window opens. Don't carry `koreader-qa` (or any other existing account) forward: it belongs to KOReader testing. The password lives only in `~/.config/omnibus-test/qa-credentials` (mode 0600), never in the transcript; reuse it when the file exists, otherwise generate one there:
 
 ```bash
-ssh -o BatchMode=yes applications 'cd ~/omnibus-test-next/config && cols=$(sqlite3 omnibus.db "select group_concat(name) from pragma_table_info(\"users\") where name != \"id\"") && \
-  sqlite3 omnibus.db "attach \"<old compose dir>/config/omnibus.db\" as old; insert into users ($cols) select $cols from old.users where username = \"<qa user>\";"'
+umask 077; f=~/.config/omnibus-test/qa-credentials; mkdir -p "$(dirname "$f")"
+[ -f "$f" ] || printf 'url=https://omnibus-test.sloan.cloud\nusername=omnibus-qa\npassword=%s\n' \
+  "$(head -c 18 /dev/urandom | base64 | tr -d '/+=' | head -c 24)" > "$f"
+. <(grep '^password=' "$f")
+hash=$(printf '%s' "$password" | argon2 "$(head -c 12 /dev/urandom | base64 | tr -d '/+=')" -id -k 19456 -t 2 -p 1 -e)
+# The SQL goes over stdin: inside a double-quoted remote command, the shell expands `$argon2id$v` and login 500s.
+printf "insert into users (username, password_hash, is_admin, can_upload, can_edit, can_download) values ('omnibus-qa', '%s', 1, 1, 1, 1);\n" "$hash" \
+  | ssh -o BatchMode=yes applications 'sqlite3 ~/omnibus-test-next/config/omnibus.db'
 ```
 
-If there's no outgoing QA user to carry, ask the user for a credential. Never turn on `registration_enabled`: omnibus-test is public, so open registration is open to everyone. The QA password lives only in a mode-0600 scratch file, never in the transcript.
+Never turn on `registration_enabled`: omnibus-test is public, so open registration is open to everyone. Once it's up (§5), check `POST /api/auth/login` with that file's credentials answers `200`.
+
+To drive the UI, log in with curl, set the `__Host-omnibus_session` cookie in an **incognito** preview tab (`document.cookie = "__Host-omnibus_session=<token>; Secure; Path=/; SameSite=Lax"`), and `POST /api/auth/logout` with the same cookie when done, since the token passes through the transcript.
 
 ## 4. Swap: tear down the old build, start the new one
 
-Write `~/omnibus-test-next/docker-compose.yml` (container `omnibus-test`, image the new tag, `restart: unless-stopped`, port `3006:3000`, `./config:/config`, `./cache:/cache`, the NAS paths mounted **`:ro`**, `PUID`/`PGID` `1000`, `OMNIBUS_PUBLIC_ORIGIN=https://omnibus-test.sloan.cloud,http://192.168.1.201:3006,http://localhost:3006`, `OMNIBUS_SECURE_COOKIES=1`, `OMNIBUS_TRUST_FORWARDED_FOR=1`, `EBOOK_LIBRARY_PATH=/books`, `AUDIOBOOK_LIBRARY_PATH=/audiobooks`), with a header comment naming the branch, PR, commit and the date of the prod copy. Then, in one ssh call:
+Write `~/omnibus-test-next/docker-compose.yml` (container `omnibus-test`, image the new tag, `restart: unless-stopped`, port `3006:3000`, `./config:/config`, `./cache:/cache`, the NAS paths mounted **`:ro`**, `PUID`/`PGID` `1000`, `OMNIBUS_PUBLIC_ORIGIN=https://omnibus-test.sloan.cloud,http://192.168.1.201:3006,http://localhost:3006`, `OMNIBUS_SECURE_COOKIES=1`, `OMNIBUS_TRUST_FORWARDED_FOR=1`, `EBOOK_LIBRARY_PATH=/books`, `AUDIOBOOK_LIBRARY_PATH=/audiobooks`, `OMNIBUS_REACT=1` so `/react/` serves the React client instead of falling through to Dioxus's "Not found"), with a header comment naming the branch, PR, commit and the date of the prod copy. Then, in one ssh call:
 
 1. `docker compose down` in the old compose directory, and remove its directory, its image, and every leftover from §1.
 2. `mv ~/omnibus-test-next ~/omnibus-test && cd ~/omnibus-test && docker compose up -d`.
