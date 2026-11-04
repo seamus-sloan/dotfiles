@@ -1,2 +1,4 @@
 # opencode-swarm session state, created wherever a swarm session runs.
 .swarm/
+# Each machine's own github.com session cookie, written by `gh-img --set-token`.
+home/dot_config/gh-image/

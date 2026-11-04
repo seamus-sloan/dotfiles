@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Upload images to GitHub as user-attachments and print an <img> tag for each,
+# ready to paste into an issue, PR, or comment body. Wraps the gh-image
+# extension with this machine's own github.com session cookie.
+#
+#     gh-img [--repo owner/repo] <image>...   # repo defaults to the current checkout's
+#     gh-img --set-token                      # store this machine's user_session cookie
+#
+# The cookie lives in ~/.config/gh-image/session-token (mode 600), never in the
+# dotfiles repo. Without it, gh-image falls back to reading a supported browser.
+set -eo pipefail
+
+token_file="${XDG_CONFIG_HOME:-$HOME/.config}/gh-image/session-token"
+
+if [ "$1" = --set-token ]; then
+    read -rsp 'github.com user_session cookie: ' token
+    echo >&2
+    mkdir -p "$(dirname "$token_file")"
+    (umask 077 && printf '%s' "$token" >"$token_file")
+    GH_SESSION_TOKEN=$token exec gh image check-token
+fi
+
+if [ -r "$token_file" ]; then
+    GH_SESSION_TOKEN=$(<"$token_file")
+    export GH_SESSION_TOKEN
+fi
+
+repo=()
+if [ "$1" = --repo ]; then
+    repo=(--repo "$2")
+    shift 2
+fi
+if [ $# -eq 0 ]; then
+    sed -n '6,7s/^# *//p' "$0" >&2
+    exit 2
+fi
+
+# Prints "<width> <height>" for a PNG, read from its IHDR chunk; nothing otherwise.
+png_size() {
+    [ "$(od -An -tu1 -N8 "$1" | tr -s ' ')" = " 137 80 78 71 13 10 26 10" ] || return 0
+    od -An -tu1 -j16 -N8 "$1" | awk '{ print $1*16777216 + $2*65536 + $3*256 + $4, $5*16777216 + $6*65536 + $7*256 + $8 }'
+}
+
+for file in "$@"; do
+    markdown=$(gh image ${repo[@]+"${repo[@]}"} "$file") || {
+        echo "gh-img: upload failed; if the cookie expired, run: gh-img --set-token" >&2
+        exit 1
+    }
+    url=${markdown##*](}
+    url=${url%)}
+    alt=$(basename "${file%.*}")
+    size=$(png_size "$file")
+    if [ -n "$size" ]; then
+        printf '<img width="%s" height="%s" alt="%s" src="%s" />\n' "${size% *}" "${size#* }" "$alt" "$url"
+    else
+        # shortcut: only PNGs get an <img> tag; add other formats if they ever get attached.
+        printf '%s\n' "$markdown"
+    fi
+done

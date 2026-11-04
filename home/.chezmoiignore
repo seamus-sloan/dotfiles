@@ -29,3 +29,6 @@
 .Brewfile
 .hammerspoon
 {{ end -}}
+
+# Each machine's own github.com session cookie; never managed or `chezmoi add`ed.
+.config/gh-image

@@ -26,6 +26,7 @@ secrets, just files; templates only pick the OS's package manager.
 | **Claude Code** | [`home/dot_claude`](home/dot_claude) | Global instructions, coding standards, skills, hooks, and statusline |
 | **opencode** | [`home/dot_config/opencode`](home/dot_config/opencode) | Bedrock providers, plus the Claude Code config reused rather than duplicated — see [`docs/opencode.md`](docs/opencode.md) |
 | **Packages** | [`home/dot_Brewfile`](home/dot_Brewfile), [`home/.chezmoiscripts`](home/.chezmoiscripts) | Shared package baseline — Homebrew on macOS, pacman (plus mise, cargo, npm) on Arch; installs everywhere, never uninstalls machine-local extras |
+| **gh-img** | [`home/dot_local/bin/executable_gh-img`](home/dot_local/bin/executable_gh-img) | Uploads screenshots as GitHub user-attachments and prints `<img>` tags, via the pinned [gh-image](https://github.com/drogers0/gh-image) extension. Each machine stores its own `user_session` cookie with `gh-img --set-token`, outside the repo |
 | **SSH** | [`home/private_dot_ssh`](home/private_dot_ssh) | Root config + defaults; host inventory pulled from a private side repo into `~/.ssh/config.d`, machine-local hosts in `~/.ssh/config.local` |
 
 ## Layout
