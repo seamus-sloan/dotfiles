@@ -26,6 +26,7 @@
 - Use conventional commits in all repositories by prefixing commits with `feat`, `fix`, or `chore`
 - One PR per piece of work, however large. Never split work into stacked branches.
 - Open or edit any PR with the `open-pr` skill. It owns the title, the body limits, and the saved-copy check.
+- **Screenshots belong on the ticket.** Attach them to GitHub issues, PRs and comments with `gh image` (the `gh-image` extension), never a gist or another image host. Reference each file from the body as `![what it shows](./shot.png)`, then `gh image shot.png -- issue comment 42 --body-file body.md` (or `issue create`, `pr create`, `pr comment`) uploads it and repoints the reference at its `user-attachments` URL. Images to a repo I can push to go up on the `gh` token, so no browser session is needed.
 - Replies to PR review comments are minimal: a fixed comment gets just the commit SHA, then the thread is resolved (see `resolve-pr-comments`).
 - **My coding standards live in `~/.claude/standards/`.** Before writing or changing any code or config, tests included, read `~/.claude/standards/CODING_STANDARDS.md` and the files it names for the task.
 - **Behaviour changes are test-first by default.** Follow the `tdd` skill for every new feature, bug fix, and refactor without being asked. Skip it only for the cases that skill lists, or when I opt out.
