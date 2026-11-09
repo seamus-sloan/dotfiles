@@ -4,7 +4,7 @@
 # automatically by chezmoi (.chezmoiscripts/run_onchange_brew-bundle.sh.tmpl)
 # whenever this file changes.
 
-tap "facebook/fb"
+tap "meta/fb"
 
 # --- Core CLI ---
 brew "chafa"
@@ -35,7 +35,8 @@ brew "zoxide"
 # --- Mobile / device tools ---
 brew "scrcpy"
 brew "xcbeautify"
-brew "facebook/fb/idb-companion", trusted: true
+# Builds against full Xcode.app; skipped on machines with only the Command Line Tools.
+brew "meta/fb/idb-companion", trusted: true if File.exist?("/Applications/Xcode.app")
 cask "android-platform-tools"
 
 # --- Apps ---
