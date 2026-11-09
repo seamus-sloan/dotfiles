@@ -15,6 +15,12 @@ else
     alias flushdns='resolvectl flush-caches'
 fi
 
+# Radar AWS: SSO login and profile switching (Notion: Set up EKS/creds access).
+alias alogin='aws sso login --profile=stg'
+aswitch() {
+    export AWS_PROFILE="$1"
+}
+
 alias sw='wt switch'
 
 # Locally remove worktrees and branches already in the default branch, keeping fresh scaffolds.
