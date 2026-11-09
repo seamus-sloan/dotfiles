@@ -124,7 +124,7 @@
       }
     }
   },
-  "outputStyle": "precise:precise",
+  "outputStyle": {{ if eq .chezmoi.hostname "m261109ss" }}"vibemaxx:vibemaxx"{{ else }}"precise:precise"{{ end }},
   "effortLevel": "xhigh",
   "modelSettings": {
     "claude-opus-5": {
