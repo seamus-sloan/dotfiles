@@ -54,6 +54,9 @@ cargo "worktrunk-sync"
 cargo "workz"
 cargo "zellij"
 
+# --- Go tools ---
+go "github.com/seamus-sloan/lazyffmpeg/cmd/lazyff"
+
 # --- Node tools ---
 npm "corepack"
 npm "markdownlint-cli"
