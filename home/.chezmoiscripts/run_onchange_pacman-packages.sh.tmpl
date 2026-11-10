@@ -11,7 +11,7 @@ set -e
 
 pkgs="
   chafa chezmoi cmake direnv docker-compose ffmpeg fzf github-cli gitleaks
-  imagemagick jq neovim pkgconf pre-commit python python-pipx ripgrep
+  go imagemagick jq neovim pkgconf pre-commit python python-pipx ripgrep
   tree-sitter tree-sitter-cli unarchiver wget zoxide zsh
   android-tools scrcpy
   ttf-hack-nerd
@@ -29,6 +29,9 @@ mise use -g codex rtk worktrunk
 # Cargo tools Arch doesn't package, prebuilt by cargo-binstall where possible.
 rustup default >/dev/null 2>&1 || rustup default stable
 cargo binstall -y create-tauri-app worktrunk-sync workz
+
+# Go tools.
+go install github.com/seamus-sloan/lazyffmpeg/cmd/lazyff@latest
 
 mise exec node -- npm install -g corepack markdownlint-cli
 {{ end -}}
