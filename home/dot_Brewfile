@@ -41,7 +41,6 @@ brew "meta/fb/idb-companion", trusted: true if File.exist?("/Applications/Xcode.
 cask "android-platform-tools"
 
 # --- Apps ---
-cask "bruno"
 cask "codex"
 cask "font-hack-nerd-font"
 cask "hammerspoon"
